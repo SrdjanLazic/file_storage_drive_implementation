@@ -156,4 +156,9 @@ public class GoogleDriveAPI implements FileStorage {
     public void get(String path) {
 
     }
+
+    @Override
+    public void initializeStorage(String s) {
+
+    }
 }
