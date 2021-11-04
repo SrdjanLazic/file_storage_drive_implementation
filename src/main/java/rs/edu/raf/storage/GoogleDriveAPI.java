@@ -15,9 +15,7 @@ import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -227,12 +225,54 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public void move(String source, String destination) {
-
+        String fileId = "1sTWaJ_j7PkjzaBWtNc3IzovK5hQf21FbOw9yLeeLPNQ";
+        String folderId = "0BwwA4oUTeiV1TGRPeTVjaWRDY1E";
+// Retrieve the existing parents to remove
+        File file = null;
+        try {
+            file = service.files().get(fileId)
+                    .setFields("parents")
+                    .execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        StringBuilder previousParents = new StringBuilder();
+        for (String parent : file.getParents()) {
+            previousParents.append(parent);
+            previousParents.append(',');
+        }
+// Move the file to the new folder
+        try {
+            file = service.files().update(fileId, null)
+                    .setAddParents(folderId)
+                    .setRemoveParents(previousParents.toString())
+                    .setFields("id, parents")
+                    .execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     public void list() {
-
+        FileList result = null;
+        try {
+            result = service.files().list()
+                    .setPageSize(10)
+                    .setFields("nextPageToken, files(id, name)")
+                    .execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        List<File> files = result.getFiles();
+        if (files == null || files.isEmpty()) {
+            System.out.println("No files found.");
+        } else {
+            System.out.println("Files:");
+            for (File file : files) {
+                System.out.printf("%s (%s)\n", file.getName(), file.getId());
+            }
+        }
     }
 
     @Override
@@ -242,7 +282,14 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public void get(String path) {
-
+        String fileId = "0BwwA4oUTeiV1UVNwOHItT0xfa2M";
+        OutputStream outputStream = new ByteArrayOutputStream();
+        try {
+            service.files().get(fileId)
+                    .executeMediaAndDownloadTo(outputStream);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
