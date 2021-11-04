@@ -123,22 +123,33 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public void createFolder(String path, String folderName) {
-        String folderId = "0BwwA4oUTeiV1TGRPeTVjaWRDY1E";
+
+        FileList result = null;
+        String folderId = null;
+        try {
+            result = service.files().list()
+                    .setFields("files(id, name)")
+                    .execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        List<File> files = result.getFiles();
+        for(File f: files){
+            if(f.getName().equalsIgnoreCase(path)) {
+                folderId = f.getId();
+            }
+        }
+
         File fileMetadata = new File();
         fileMetadata.setName(folderName);
         fileMetadata.setMimeType("application/vnd.google-apps.folder");
         fileMetadata.setParents(Collections.singletonList(folderId));
-        java.io.File filePath = new java.io.File(path);
-        FileContent mediaContent = new FileContent("image/jpeg", filePath);
-        Drive driveService = null;
-        try {
-            driveService = getDriveService();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        //java.io.File filePath = new java.io.File(path);
+        //FileContent mediaContent = new FileContent("image/jpeg", filePath);
+
         File file = null;
         try {
-            file = driveService.files().create(fileMetadata, mediaContent)
+            file = service.files().create(fileMetadata)
                     .setFields("id, parents")
                     .execute();
         } catch (IOException e) {
