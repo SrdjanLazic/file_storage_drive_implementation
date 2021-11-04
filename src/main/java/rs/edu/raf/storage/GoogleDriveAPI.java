@@ -94,6 +94,8 @@ public class GoogleDriveAPI implements FileStorage {
 
         Drive service = getDriveService();
 
+        //createFolder("root");
+        /*
         FileList result = service.files().list()
                 .setPageSize(10)
                 .setFields("nextPageToken, files(id, name)")
@@ -107,7 +109,7 @@ public class GoogleDriveAPI implements FileStorage {
                 System.out.printf("%s (%s)\n", file.getName(), file.getId());
             }
         }
-
+        */
 
 
     }
@@ -124,7 +126,25 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public void createFolder(String folderName) {
+        File fileMetadata = new File();
+        fileMetadata.setName(folderName);
+        fileMetadata.setMimeType("application/vnd.google-apps.folder");
 
+        Drive driveService= null;
+        try {
+            driveService = getDriveService();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        File file = null;
+        try {
+            file = driveService.files().create(fileMetadata)
+                    .setFields("id")
+                    .execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println("Folder ID: " + file.getId());
     }
 
     @Override
