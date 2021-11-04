@@ -21,15 +21,9 @@ import java.util.Collections;
 import java.util.List;
 
 public class GoogleDriveAPI implements FileStorage {
-    Drive service;
 
-    {
-        try {
-            service = getDriveService();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+    private Drive service;
+
 
     /**
      * Application name.
@@ -99,11 +93,14 @@ public class GoogleDriveAPI implements FileStorage {
                 .build();
     }
 
+
+    /*
     public static void main(String[] args) throws IOException {
 
         Drive service = getDriveService();
 
-        /*
+
+
         FileList result = service.files().list()
                 .setPageSize(10)
                 .setFields("nextPageToken, files(id, name)")
@@ -117,10 +114,12 @@ public class GoogleDriveAPI implements FileStorage {
                 System.out.printf("%s (%s)\n", file.getName(), file.getId());
             }
         }
-        */
+
 
 
     }
+    */
+
 
     @Override
     public void createFolder(String path, String folderName) {
@@ -150,21 +149,38 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public void createFile(String path, String filename) {
-        String folderId = "0BwwA4oUTeiV1TGRPeTVjaWRDY1E";
-        File fileMetadata = new File();
-        fileMetadata.setName(filename);
-        fileMetadata.setParents(Collections.singletonList(folderId));
-        java.io.File filePath = new java.io.File(path);
-        FileContent mediaContent = new FileContent("image/jpeg", filePath);
-        Drive driveService = null;
+
+        FileList result = null;
+        String folderId = null;
         try {
-            driveService = getDriveService();
+            result = service.files().list()
+                    .setFields("files(id, name)")
+                    .execute();
         } catch (IOException e) {
             e.printStackTrace();
         }
+        List<File> files = result.getFiles();
+        for(File f: files){
+            if(f.getName().equalsIgnoreCase(path)) {
+                folderId = f.getId();
+            }
+        }
+        /*
+        try {
+            folderId = service.files().get(path).setFields("id").execute().getId();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+         */
+        File fileMetadata = new File();
+        fileMetadata.setName(filename);
+        fileMetadata.setParents(Collections.singletonList(folderId));
+        //java.io.File filePath = new java.io.File();
+        //FileContent mediaContent = new FileContent("image/jpeg", filePath);
+
         File file = null;
         try {
-            file = driveService.files().create(fileMetadata, mediaContent)
+            file = service.files().create(fileMetadata)
                     .setFields("id, parents")
                     .execute();
         } catch (IOException e) {
@@ -179,15 +195,9 @@ public class GoogleDriveAPI implements FileStorage {
         fileMetadata.setName(folderName);
         fileMetadata.setMimeType("application/vnd.google-apps.folder");
 
-        Drive driveService= null;
-        try {
-            driveService = getDriveService();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
         File file = null;
         try {
-            file = driveService.files().create(fileMetadata)
+            file = service.files().create(fileMetadata)
                     .setFields("id")
                     .execute();
         } catch (IOException e) {
@@ -201,15 +211,10 @@ public class GoogleDriveAPI implements FileStorage {
         File fileMetadata = new File();
         fileMetadata.setName(filename);
 
-        Drive driveService= null;
-        try {
-            driveService = getDriveService();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+
         File file = null;
         try {
-            file = driveService.files().create(fileMetadata)
+            file = service.files().create(fileMetadata)
                     .setFields("id")
                     .execute();
         } catch (IOException e) {
@@ -258,13 +263,15 @@ public class GoogleDriveAPI implements FileStorage {
         FileList result = null;
         try {
             result = service.files().list()
-                    .setPageSize(10)
                     .setFields("nextPageToken, files(id, name)")
                     .execute();
         } catch (IOException e) {
             e.printStackTrace();
         }
         List<File> files = result.getFiles();
+        for(File f: files){
+            f.getId();
+        }
         if (files == null || files.isEmpty()) {
             System.out.println("No files found.");
         } else {
@@ -294,6 +301,26 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public void initializeStorage(String s) {
+        try {
+            this.service = getDriveService();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        /*
+        File fileMetadata = new File();
+        fileMetadata.setName(s);
+        fileMetadata.setMimeType("application/vnd.google-apps.folder");
 
+        File file = null;
+        try {
+            file = service.files().create(fileMetadata)
+                    .setFields("id")
+                    .execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println("Folder ID: " + file.getId());
+         */
     }
+
 }
