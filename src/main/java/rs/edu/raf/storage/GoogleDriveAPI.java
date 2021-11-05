@@ -7,6 +7,8 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.FileContent;
+import com.google.api.client.http.GenericUrl;
+import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.store.FileDataStoreFactory;
@@ -16,6 +18,7 @@ import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
 
 import java.io.*;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -123,7 +126,7 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public void createFolder(String path, String folderName) {
-
+        /*
         FileList result = null;
         String folderId = null;
         try {
@@ -139,7 +142,9 @@ public class GoogleDriveAPI implements FileStorage {
                 folderId = f.getId();
             }
         }
+        */
 
+        String folderId = findID(path);
         File fileMetadata = new File();
         fileMetadata.setName(folderName);
         fileMetadata.setMimeType("application/vnd.google-apps.folder");
@@ -161,28 +166,8 @@ public class GoogleDriveAPI implements FileStorage {
     @Override
     public void createFile(String path, String filename) {
 
-        FileList result = null;
-        String folderId = null;
-        try {
-            result = service.files().list()
-                    .setFields("files(id, name)")
-                    .execute();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        List<File> files = result.getFiles();
-        for(File f: files){
-            if(f.getName().equalsIgnoreCase(path)) {
-                folderId = f.getId();
-            }
-        }
-        /*
-        try {
-            folderId = service.files().get(path).setFields("id").execute().getId();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-         */
+        String folderId = findID(path);
+
         File fileMetadata = new File();
         fileMetadata.setName(filename);
         fileMetadata.setParents(Collections.singletonList(folderId));
@@ -197,6 +182,7 @@ public class GoogleDriveAPI implements FileStorage {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        System.out.println("File created!");
         System.out.println("File ID: " + file.getId());
     }
 
@@ -214,6 +200,7 @@ public class GoogleDriveAPI implements FileStorage {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        System.out.println("Folder created!");
         System.out.println("Folder ID: " + file.getId());
     }
 
@@ -231,19 +218,47 @@ public class GoogleDriveAPI implements FileStorage {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        System.out.println("Folder ID: " + file.getId());
+        System.out.println("File created!");
+        System.out.println("File ID: " + file.getId());
     }
 
     @Override
     public void delete(String path) {
-
+        String fileId = findID(path);
+        try {
+            service.files().delete(fileId).execute();
+        } catch (IOException e) {
+            System.out.println("An error occurred: " + e);
+        }
+        System.out.println("File " + path + " deleted!");
     }
 
     @Override
     public void move(String source, String destination) {
-        String fileId = "1sTWaJ_j7PkjzaBWtNc3IzovK5hQf21FbOw9yLeeLPNQ";
-        String folderId = "0BwwA4oUTeiV1TGRPeTVjaWRDY1E";
-// Retrieve the existing parents to remove
+
+        String fileId = findID(source);
+        String folderId = findID(destination);
+        /*
+        FileList result = null;
+        try {
+            result = service.files().list()
+                    .setFields("files(id, name)")
+                    .execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        List<File> files = result.getFiles();
+        for(File f: files){
+            if(f.getName().equalsIgnoreCase(source)) {
+                fileId = f.getId();
+            }
+            if(f.getName().equalsIgnoreCase(destination)){
+                folderId = f.getId();
+            }
+        }
+         */
+
+        // Retrieve the existing parents to remove
         File file = null;
         try {
             file = service.files().get(fileId)
@@ -257,7 +272,7 @@ public class GoogleDriveAPI implements FileStorage {
             previousParents.append(parent);
             previousParents.append(',');
         }
-// Move the file to the new folder
+        // Move the file to the new folder
         try {
             file = service.files().update(fileId, null)
                     .setAddParents(folderId)
@@ -274,7 +289,7 @@ public class GoogleDriveAPI implements FileStorage {
         FileList result = null;
         try {
             result = service.files().list()
-                    .setFields("nextPageToken, files(id, name)")
+                    .setFields("files(id, name)")
                     .execute();
         } catch (IOException e) {
             e.printStackTrace();
@@ -295,12 +310,25 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public void list(String argument, Operations operation) {
-
+        //#TODO pitati Srdjana sta nam je ova druga lista
     }
 
     @Override
     public void get(String path) {
-        String fileId = "0BwwA4oUTeiV1UVNwOHItT0xfa2M";
+
+        String fileId = findID(path);
+        //print file metadata
+        try {
+            File file = service.files().get(fileId).execute();
+
+            System.out.println("Name: " + file.getName());
+            System.out.println("Description: " + file.getDescription());
+            System.out.println("MIME type: " + file.getMimeType());
+        } catch (IOException e) {
+            System.out.println("An error occurred: " + e);
+        }
+         
+        /*
         OutputStream outputStream = new ByteArrayOutputStream();
         try {
             service.files().get(fileId)
@@ -308,6 +336,7 @@ public class GoogleDriveAPI implements FileStorage {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        */
     }
 
     @Override
@@ -317,21 +346,45 @@ public class GoogleDriveAPI implements FileStorage {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        /*
-        File fileMetadata = new File();
-        fileMetadata.setName(s);
-        fileMetadata.setMimeType("application/vnd.google-apps.folder");
+    }
 
-        File file = null;
+    public String findID(String s){
+        FileList result = null;
+        String id = null;
         try {
-            file = service.files().create(fileMetadata)
-                    .setFields("id")
+            result = service.files().list()
+                    .setFields("files(id, name)")
                     .execute();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        System.out.println("Folder ID: " + file.getId());
-         */
+        List<File> files = result.getFiles();
+        for(File f: files){
+            if(f.getName().equalsIgnoreCase(s)) {
+                id = f.getId();
+                System.out.println("File/Folder ID found!");
+            }
+        }
+        return id;
     }
 
+    public File getFile(String filename){
+        FileList result = null;
+        File targetFile = null;
+        try {
+            result = service.files().list()
+                    .setFields("files(id, name)")
+                    .execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        List<File> files = result.getFiles();
+        for(File f: files){
+            if(f.getName().equalsIgnoreCase(filename)) {
+                targetFile = f;
+                System.out.println("File/Folder found!");
+            }
+        }
+        return targetFile;
+    }
 }
