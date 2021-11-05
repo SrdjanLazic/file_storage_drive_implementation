@@ -6,9 +6,6 @@ import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.http.FileContent;
-import com.google.api.client.http.GenericUrl;
-import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.store.FileDataStoreFactory;
@@ -18,10 +15,10 @@ import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
 
 import java.io.*;
-import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 public class GoogleDriveAPI implements FileStorage {
 
@@ -310,13 +307,14 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public void list(String argument, Operations operation) {
-        //#TODO pitati Srdjana sta nam je ova druga lista
+        //#TODO
     }
 
     @Override
     public void get(String path) {
 
         String fileId = findID(path);
+        String fileName = getFile(path).getName();
         //print file metadata
         try {
             File file = service.files().get(fileId).execute();
@@ -328,15 +326,25 @@ public class GoogleDriveAPI implements FileStorage {
             System.out.println("An error occurred: " + e);
         }
          
-        /*
-        OutputStream outputStream = new ByteArrayOutputStream();
+
+        //download the file
+        OutputStream outputStream = null;
+        try {
+            outputStream = new FileOutputStream("C:/skladiste/download/" + fileName);
+            System.out.println("Filename  " + fileName);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
         try {
             service.files().get(fileId)
                     .executeMediaAndDownloadTo(outputStream);
+            outputStream.flush();
+            outputStream.close();
+            System.out.println("File downloaded!");
         } catch (IOException e) {
             e.printStackTrace();
         }
-        */
+
     }
 
     @Override
@@ -346,6 +354,33 @@ public class GoogleDriveAPI implements FileStorage {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        java.io.File downloadFolder = new java.io.File("C:/skladiste/download/");
+        downloadFolder.mkdir();
+    }
+
+    @Override
+    public void limitNumberOfFiles(int i, String s) {
+
+    }
+
+    @Override
+    public void limitStorageSize(long l) {
+
+    }
+
+    @Override
+    public void restrictExtension(String s) {
+
+    }
+
+    @Override
+    public void addNewUser(AbstractUser abstractUser, Set<Privileges> set) {
+
+    }
+
+    @Override
+    public void disconnectUser(AbstractUser abstractUser) {
+
     }
 
     public String findID(String s){
