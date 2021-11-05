@@ -315,6 +315,7 @@ public class GoogleDriveAPI implements FileStorage {
 
         String fileId = findID(path);
         String fileName = getFile(path).getName();
+        String fileMime = null;
         //print file metadata
         try {
             File file = service.files().get(fileId).execute();
@@ -322,6 +323,7 @@ public class GoogleDriveAPI implements FileStorage {
             System.out.println("Name: " + file.getName());
             System.out.println("Description: " + file.getDescription());
             System.out.println("MIME type: " + file.getMimeType());
+            fileMime = file.getMimeType();
         } catch (IOException e) {
             System.out.println("An error occurred: " + e);
         }
@@ -329,6 +331,7 @@ public class GoogleDriveAPI implements FileStorage {
 
         //download the file
         OutputStream outputStream = null;
+        boolean googleDocCheck = false;
         try {
             outputStream = new FileOutputStream("C:/skladiste/download/" + fileName);
             System.out.println("Filename  " + fileName);
@@ -342,7 +345,17 @@ public class GoogleDriveAPI implements FileStorage {
             outputStream.close();
             System.out.println("File downloaded!");
         } catch (IOException e) {
-            e.printStackTrace();
+            //e.printStackTrace();
+            googleDocCheck = true;
+            try {
+                OutputStream outputStream1 = new ByteArrayOutputStream();
+                service.files().export(fileId, fileMime)
+                        .executeMediaAndDownloadTo(outputStream1);
+                outputStream1.flush();
+                outputStream1.close();
+            } catch (IOException ioException) {
+                ioException.printStackTrace();
+            }
         }
 
     }
