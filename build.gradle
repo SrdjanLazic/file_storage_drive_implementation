@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'maven-publish'
 }
 
 group 'rs.edu.raf'
@@ -8,6 +9,18 @@ version '1.0'
 repositories {
     mavenLocal()
     mavenCentral()
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = 'rs.edu.raf'
+            artifactId = 'file-storage-drive-implementation'
+            version = '1.0'
+
+            from components.java
+        }
+    }
 }
 
 dependencies {

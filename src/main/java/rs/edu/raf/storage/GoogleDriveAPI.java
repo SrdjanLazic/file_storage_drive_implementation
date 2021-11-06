@@ -346,13 +346,20 @@ public class GoogleDriveAPI implements FileStorage {
             System.out.println("File downloaded!");
         } catch (IOException e) {
             //e.printStackTrace();
+            System.out.println("File is a google doc:");
             googleDocCheck = true;
             try {
-                OutputStream outputStream1 = new ByteArrayOutputStream();
+                outputStream.close();
+            } catch (IOException ioException) {
+                ioException.printStackTrace();
+            }
+            try {
+                //OutputStream outputStream1 = new FileOutputStream();
                 service.files().export(fileId, fileMime)
-                        .executeMediaAndDownloadTo(outputStream1);
-                outputStream1.flush();
-                outputStream1.close();
+                        .executeMediaAndDownloadTo(outputStream);
+                outputStream.flush();
+                outputStream.close();
+                System.out.println("File downloaded!");
             } catch (IOException ioException) {
                 ioException.printStackTrace();
             }
