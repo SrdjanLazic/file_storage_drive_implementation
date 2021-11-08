@@ -21,6 +21,9 @@ import java.util.*;
 public class GoogleDriveAPI implements FileStorage {
 
     private Drive service;
+    private File users;
+    private File config;
+    private FileStorage fileStorageInstance;
 
 
     /**
@@ -463,8 +466,18 @@ public class GoogleDriveAPI implements FileStorage {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        //mozda bespotrebna implementacija jedne instance nase GoogleDrive klase
+        this.fileStorageInstance = new GoogleDriveAPI();
+
+        //lokalni download folder
         java.io.File downloadFolder = new java.io.File("C:/skladiste/download/");
         downloadFolder.mkdir();
+
+        // TODO: napraviti user.json i config.json fajlove da li ih bolje praviti u C:/skladiste gde je i download folder ili samo direktno na drajv?
+        this.users = new File().setName("users.json");
+        this.config = new File().setName("config.json");
+
     }
 
     @Override
