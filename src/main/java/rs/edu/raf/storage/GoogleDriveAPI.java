@@ -15,10 +15,8 @@ import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
 
 import java.io.*;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 public class GoogleDriveAPI implements FileStorage {
 
@@ -307,7 +305,98 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public void list(String argument, Operations operation) {
-        //#TODO
+        String type;
+        FileList result = null;
+        try {
+            result = service.files().list()
+                    .setFields("files(id, name)")
+                    .execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        List<File> files = result.getFiles();
+        for(File f: files){
+            f.getId();
+        }
+        if (files == null || files.isEmpty()) {
+            System.out.println("No files found.");
+        } else {
+            /*System.out.println("Files:");
+            for (File file : files) {
+                System.out.printf("%s (%s)\n", file.getName(), file.getId());
+            }*/
+        }
+
+        if (operation == Operations.FILTER_EXTENSION) {
+            String extension = argument;
+            System.out.println("\nLista fajlova sa datom ekstenzijom u skladistu:");
+            System.out.println("------------------------------------------------\n");
+            for (File file : files) {
+                if (file.getName().endsWith(extension))
+                    System.out.printf("%s (%s)\n", file.getName(), file.getId());
+            }
+        } else if (operation == Operations.FILTER_FILENAME) {
+            String filename = argument;
+            System.out.println("\nLista fajlova ciji nazivi sadrze dati tekst:");
+            System.out.println("----------------------------------------------\n");
+            for (File file : files) {
+                if (file.getName().contains(filename))
+                    System.out.printf("%s (%s)\n", file.getName(), file.getId());
+            }
+        } else if (operation == Operations.SORT_BY_NAME_ASC || operation == Operations.SORT_BY_NAME_DESC) {
+            String order;
+            if(operation == Operations.SORT_BY_NAME_ASC) {
+                files.sort(new FileNameComparator());
+                order = " rastuce ";
+            }
+            else {
+                files.sort(new FileNameComparator().reversed());
+                order = " opadajuce ";
+            }
+
+            System.out.println("\nLista fajlova i foldera sortirana" + order + "po nazivu:");
+            System.out.println("-----------------------------------------------------\n");
+            for (File file : files) {
+                type = (file.getMimeType().equals("application/vnd.google-apps.folder")) ? "FOLDER" : "FILE";
+                System.out.println(file.getName() + " --- " + file.getSize() / (1024 * 1024) + " MB " + " --- " + type);
+            }
+            /*
+            if(order.equalsIgnoreCase(" rastuce ")) {
+
+            } else {
+                for (int i = files.size(); i-- > 0; ) {
+                    type = (files.get(i).getMimeType().equals("application/vnd.google-apps.folder")) ? "FOLDER" : "FILE";
+                    System.out.println(files.get(i).getName() + " --- " + files.size() / (1024 * 1024) + " MB " + " --- " + type);
+                }
+            }
+             */
+        } else if (operation == Operations.SORT_BY_DATE_MODIFIED_ASC || operation == Operations.SORT_BY_DATE_MODIFIED_DESC) {
+            String order;
+            if (operation == Operations.SORT_BY_DATE_MODIFIED_ASC) {
+                files.sort(new FileModifiedDateComparator());
+                order = " rastuce ";
+            } else {
+                files.sort(new FileModifiedDateComparator().reversed());
+                order = " opadajuce ";
+            }
+            SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
+
+            System.out.println("\nLista fajlova i foldera sortirana" + order + "po datumu izmene:");
+            System.out.println("-----------------------------------------------------\n");
+            for (File file : files) {
+                type = (file.getMimeType().equals("application/vnd.google-apps.folder")) ? "FOLDER" : "FILE";
+                System.out.println(file.getName() + " --- " + files.size() / (1024 * 1024) + " MB" + " --- " + type + " --- " + sdf.format(file.getModifiedTime()));
+            }
+        } else if (operation == Operations.SORT_BY_DATE_CREATED) {
+            files.sort(new FileDateCreatedComparator());
+            SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
+            System.out.println("\nLista fajlova i foldera sortirana po datumu kreiranje:");
+            System.out.println("-----------------------------------------------------\n");
+            for (File file : files) {
+                type = (file.getMimeType().equals("application/vnd.google-apps.folder")) ? "FOLDER" : "FILE";
+                System.out.println(file.getName() + " --- " + files.size() / (1024 * 1024) + " MB" + " --- " + type + " --- " + sdf.format(file.getCreatedTime()));
+            }
+        }
     }
 
     @Override
