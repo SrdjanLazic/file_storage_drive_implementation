@@ -8,6 +8,7 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.client.util.DateTime;
 import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.DriveScopes;
@@ -284,10 +285,11 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public void list() {
+        String type;
         FileList result = null;
         try {
             result = service.files().list()
-                    .setFields("files(id, name)")
+                    .setFields("files(id, name, mimeType, size)")
                     .execute();
         } catch (IOException e) {
             e.printStackTrace();
@@ -301,7 +303,15 @@ public class GoogleDriveAPI implements FileStorage {
         } else {
             System.out.println("Files:");
             for (File file : files) {
+                Long size;
                 System.out.printf("%s (%s)\n", file.getName(), file.getId());
+                type = (file.getMimeType().equals("application/vnd.google-apps.folder")) ? "FOLDER" : "FILE";
+                if(file.getSize() == null){
+                    size = Long.valueOf(0);
+                } else{
+                    size = file.getSize();
+                }
+                System.out.println(" --- " + size/1024 + " kB " + " --- " + type);
             }
         }
     }
@@ -312,7 +322,7 @@ public class GoogleDriveAPI implements FileStorage {
         FileList result = null;
         try {
             result = service.files().list()
-                    .setFields("files(id, name)")
+                    .setFields("files(id, name, mimeType, size, modifiedTime, createdTime)")
                     .execute();
         } catch (IOException e) {
             e.printStackTrace();
@@ -323,12 +333,12 @@ public class GoogleDriveAPI implements FileStorage {
         }
         if (files == null || files.isEmpty()) {
             System.out.println("No files found.");
-        } else {
-            /*System.out.println("Files:");
+        } /*else {
+            System.out.println("Files:");
             for (File file : files) {
                 System.out.printf("%s (%s)\n", file.getName(), file.getId());
-            }*/
-        }
+            }
+        }*/
 
         if (operation == Operations.FILTER_EXTENSION) {
             String extension = argument;
@@ -360,8 +370,24 @@ public class GoogleDriveAPI implements FileStorage {
             System.out.println("\nLista fajlova i foldera sortirana" + order + "po nazivu:");
             System.out.println("-----------------------------------------------------\n");
             for (File file : files) {
-                type = (file.getMimeType().equals("application/vnd.google-apps.folder")) ? "FOLDER" : "FILE";
-                System.out.println(file.getName() + " --- " + file.getSize() / (1024 * 1024) + " MB " + " --- " + type);
+                String name;
+                Long size;
+                if(file.getMimeType() == null){
+                    type = "FILE";
+                } else{
+                    type = (file.getMimeType().equalsIgnoreCase("application/vnd.google-apps.folder")) ? "FOLDER" : "FILE";
+                }
+                if(file.getName() == null){
+                    name = "Untitled";
+                } else{
+                    name = file.getName();
+                }
+                if(file.getSize() == null){
+                    size = Long.valueOf(0);
+                } else{
+                    size = file.getSize();
+                }
+                System.out.println( name + " --- " + size / (1024) + " kB " + " --- " + type);
             }
             /*
             if(order.equalsIgnoreCase(" rastuce ")) {
@@ -387,8 +413,31 @@ public class GoogleDriveAPI implements FileStorage {
             System.out.println("\nLista fajlova i foldera sortirana" + order + "po datumu izmene:");
             System.out.println("-----------------------------------------------------\n");
             for (File file : files) {
-                type = (file.getMimeType().equals("application/vnd.google-apps.folder")) ? "FOLDER" : "FILE";
-                System.out.println(file.getName() + " --- " + files.size() / (1024 * 1024) + " MB" + " --- " + type + " --- " + sdf.format(file.getModifiedTime()));
+                String name;
+                Long size;
+                DateTime modtime;
+                if(file.getMimeType() == null){
+                    type = "FILE";
+                } else{
+                    type = (file.getMimeType().equalsIgnoreCase("application/vnd.google-apps.folder")) ? "FOLDER" : "FILE";
+                }
+                if(file.getName() == null){
+                    name = "Untitled";
+                } else{
+                    name = file.getName();
+                }
+                if(file.getSize() == null){
+                    size = Long.valueOf(0);
+                } else{
+                    size = file.getSize();
+                }
+                if(file.getModifiedTime() == null){
+                    modtime = file.getCreatedTime();
+                } else{
+                    modtime = file.getModifiedTime();
+                }
+                //type = (file.getMimeType().equalsIgnoreCase("application/vnd.google-apps.folder")) ? "FOLDER" : "FILE";
+                System.out.println(name + " --- " + size / (1024) + " kB" + " --- " + type + " --- " + modtime.toStringRfc3339());
             }
         } else if (operation == Operations.SORT_BY_DATE_CREATED) {
             files.sort(new FileDateCreatedComparator());
@@ -396,8 +445,14 @@ public class GoogleDriveAPI implements FileStorage {
             System.out.println("\nLista fajlova i foldera sortirana po datumu kreiranje:");
             System.out.println("-----------------------------------------------------\n");
             for (File file : files) {
-                type = (file.getMimeType().equals("application/vnd.google-apps.folder")) ? "FOLDER" : "FILE";
-                System.out.println(file.getName() + " --- " + files.size() / (1024 * 1024) + " MB" + " --- " + type + " --- " + sdf.format(file.getCreatedTime()));
+                Long size;
+                if(file.getSize() == null){
+                    size = Long.valueOf(0);
+                } else{
+                    size = file.getSize();
+                }
+                type = (file.getMimeType().equalsIgnoreCase("application/vnd.google-apps.folder")) ? "FOLDER" : "FILE";
+                System.out.println(file.getName() + " --- " + size / (1024) + " kB" + " --- " + type + " --- " + file.getCreatedTime().toStringRfc3339());
             }
         }
     }
