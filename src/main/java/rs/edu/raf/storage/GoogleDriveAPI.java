@@ -1,11 +1,13 @@
 package rs.edu.raf.storage;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.FileContent;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.DateTime;
@@ -22,6 +24,10 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class GoogleDriveAPI implements FileStorage {
+
+    static{
+        StorageManager.registerStorage(new GoogleDriveAPI());
+    }
 
     private Drive service;
     private File users;
@@ -559,6 +565,70 @@ public class GoogleDriveAPI implements FileStorage {
         java.io.File downloadFolder = new java.io.File("C:/skladiste/download/");
         downloadFolder.mkdir();
 
+        boolean isStorage = false;
+        Scanner scanner = new Scanner(System.in);
+        File file = new File();
+        file.setName(s);
+        if (findFile("users.json") && (getFile("users.json").getParents() == null) && findFile("config.json") && (getFile("config.json").getParents() == null))
+            isStorage = true;
+
+        /*
+        // Ako jeste skladiste, procitaj user i config fajlove
+        if(isStorage){
+            System.out.println("Direktorijum je vec skladiste. Unesite username i password kako biste se konektovali na skladiste.");
+            System.out.println("Username:");
+            String username = scanner.nextLine();
+            System.out.println("Password:");
+            String password = scanner.nextLine();
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            User user = null;
+            try {
+                user = objectMapper.readValue(new java.io.File(path + "/users.json"), User.class);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            // Provera kredencijala - uporedjivanje prosledjenih username i password-a i procitanih iz users.json fajla
+            if(username.equalsIgnoreCase(user.getUsername()) && password.equalsIgnoreCase(user.getPassword())){
+                try {
+                    // Ako se podaci User-a match-uju, procitaj config, setuj trenutni storage i dodaj skladiste u listu skladista
+                    StorageModel storageModel = objectMapper.readValue(new java.io.File(path + "/config.json"), StorageModel.class);
+                    this.storageModelList.add(storageModel);
+                    setCurrentStorage(storageModel);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            } else {
+                System.out.println("Neispravan username ili password!");
+                return;
+            }
+            // Pravimo novo skladiste, prilikom kreiranja User-u koji ga je kreirao dodeljujemo sve privilegije
+        } else {
+            System.out.println("Direktorijum nije skladiste. Da li zelite da kreirate novo skladiste? Unesite DA ili NE");
+            String choice = scanner.nextLine();
+
+            if(choice.equalsIgnoreCase("DA")){
+                System.out.println("Unesite username i password kako biste kreirali skladiste.");
+                System.out.println("Username:");
+                String username = scanner.nextLine();
+                System.out.println("Password:");
+                String password = scanner.nextLine();
+
+                User user = new User(username, password);
+                user.setPrivileges(Set.of(Privileges.values()));
+                StorageModel storageModel = new StorageModel(user, path);
+                this.storageModelList.add(storageModel);
+                setCurrentStorage(storageModel);
+            } else {
+                System.out.println("Skladiste nije kreirano.");
+                return;
+            }
+
+        }
+
+         */
+
         // TODO: napraviti user.json i config.json fajlove da li ih bolje praviti u C:/skladiste gde je i download folder ili samo direktno na drajv?
         this.users = new File().setName("users.json");
         this.config = new File().setName("config.json");
@@ -595,7 +665,7 @@ public class GoogleDriveAPI implements FileStorage {
         String id = null;
         try {
             result = service.files().list()
-                    .setFields("files(id, name)")
+                    .setFields("files(id, name, mimeType, size)")
                     .execute();
         } catch (IOException e) {
             e.printStackTrace();
@@ -610,12 +680,36 @@ public class GoogleDriveAPI implements FileStorage {
         return id;
     }
 
+    //MOZE BITI PROBLEMATICNA METODA
+    public boolean findFile(String s){
+        FileList result = null;
+        String id = null;
+        boolean check = false;
+        try {
+            result = service.files().list()
+                    .setFields("files(id, name, mimeType, size)")
+                    .execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        List<File> files = result.getFiles();
+        for(File f: files){
+            if(f.getName().equalsIgnoreCase(s)) {
+                id = f.getName();
+                if(s.contentEquals(id))
+                    check = true;
+                System.out.println("File/Folder ID found!");
+            }
+        }
+        return check;
+    }
+
     public File getFile(String filename){
         FileList result = null;
         File targetFile = null;
         try {
             result = service.files().list()
-                    .setFields("files(id, name)")
+                    .setFields("files(id, name, mimeType, size)")
                     .execute();
         } catch (IOException e) {
             e.printStackTrace();
