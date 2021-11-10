@@ -16,6 +16,8 @@ import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
 
 import java.io.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -286,12 +288,23 @@ public class GoogleDriveAPI implements FileStorage {
     //Nije moguce uploadovati na google drive bez http-a!!!
     @Override
     public void put(String sources, String destination) {
+
+        String folderId = findID(destination);
+
+        Path original = Paths.get(sources);
+        java.io.File temp = new java.io.File(String.valueOf(original));
+
         File fileMetadata = new File();
-        fileMetadata.setName(sources);
+        fileMetadata.setName(temp.getName());
+        if (temp.isDirectory()) {
+            fileMetadata.setMimeType("application/vnd.google-apps.folder");
+        }
+        fileMetadata.setParents(Collections.singletonList(folderId));
+
         File file = null;
         try {
             file = service.files().create(fileMetadata)
-                    .setFields("id")
+                    .setFields("id, parents")
                     .execute();
         } catch (IOException e) {
             e.printStackTrace();
