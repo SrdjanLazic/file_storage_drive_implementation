@@ -283,6 +283,23 @@ public class GoogleDriveAPI implements FileStorage {
         }
     }
 
+    //Nije moguce uploadovati na google drive bez http-a!!!
+    @Override
+    public void put(String sources, String destination) {
+        File fileMetadata = new File();
+        fileMetadata.setName(sources);
+        File file = null;
+        try {
+            file = service.files().create(fileMetadata)
+                    .setFields("id")
+                    .execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println("File ID: " + file.getId());
+        System.out.println("UnsupportedOperation cannot upload to remote google drive storage without http requests!");
+    }
+
     @Override
     public void list() {
         String type;
