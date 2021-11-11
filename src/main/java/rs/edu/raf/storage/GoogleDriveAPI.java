@@ -16,6 +16,8 @@ import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
+import rs.edu.raf.storage.enums.Operations;
+import rs.edu.raf.storage.enums.Privileges;
 
 import java.io.*;
 import java.nio.file.Path;
@@ -29,9 +31,9 @@ public class GoogleDriveAPI implements FileStorage {
         StorageManager.registerStorage(new GoogleDriveAPI());
     }
 
+    private List<DriveStorageModel> driveStorageModelList = new ArrayList<>();
+    private DriveStorageModel currentStorage;
     private Drive service;
-    private File users;
-    private File config;
     private FileStorage fileStorageInstance;
 
 
@@ -291,41 +293,13 @@ public class GoogleDriveAPI implements FileStorage {
         }
     }
 
-    //Nije moguce uploadovati na google drive bez http-a!!!
-    @Override
-    public void put(String sources, String destination) {
-
-        String folderId = findID(destination);
-
-        Path original = Paths.get(sources);
-        java.io.File temp = new java.io.File(String.valueOf(original));
-
-        File fileMetadata = new File();
-        fileMetadata.setName(temp.getName());
-        if (temp.isDirectory()) {
-            fileMetadata.setMimeType("application/vnd.google-apps.folder");
-        }
-        fileMetadata.setParents(Collections.singletonList(folderId));
-
-        File file = null;
-        try {
-            file = service.files().create(fileMetadata)
-                    .setFields("id, parents")
-                    .execute();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        System.out.println("File ID: " + file.getId());
-        System.out.println("UnsupportedOperation cannot upload to remote google drive storage without http requests!");
-    }
-
     @Override
     public void list() {
         String type;
         FileList result = null;
         try {
             result = service.files().list()
-                    .setFields("files(id, name, mimeType, size)")
+                    .setFields("files(id, name, mimeType, size, description)")
                     .execute();
         } catch (IOException e) {
             e.printStackTrace();
@@ -358,7 +332,7 @@ public class GoogleDriveAPI implements FileStorage {
         FileList result = null;
         try {
             result = service.files().list()
-                    .setFields("files(id, name, mimeType, size, modifiedTime, createdTime)")
+                    .setFields("files(id, name, mimeType, size, modifiedTime, createdTime, description)")
                     .execute();
         } catch (IOException e) {
             e.printStackTrace();
@@ -493,12 +467,42 @@ public class GoogleDriveAPI implements FileStorage {
         }
     }
 
+
+    @Override
+    public void put(String sources, String destination) {
+
+        String folderId = findID(destination);
+
+        Path original = Paths.get(sources);
+        java.io.File temp = new java.io.File(String.valueOf(original));
+
+        File fileMetadata = new File();
+        fileMetadata.setName(temp.getName());
+        if (temp.isDirectory()) {
+            fileMetadata.setMimeType("application/vnd.google-apps.folder");
+        }
+        fileMetadata.setParents(Collections.singletonList(folderId));
+        //java.io.File filePath = new java.io.File();
+        FileContent mediaContent = new FileContent(null, temp);
+
+        File file = null;
+        try {
+            file = service.files().create(fileMetadata, mediaContent)
+                    .setFields("id, parents")
+                    .execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println("File uploaded into Google Drive Storage - File ID: " + file.getId());
+    }
+
     @Override
     public void get(String path) {
 
         String fileId = findID(path);
         String fileName = getFile(path).getName();
-        String fileMime = null;
+        String fileMime = getFile(path).getMimeType();
+
         //print file metadata
         try {
             File file = service.files().get(fileId).execute();
@@ -510,7 +514,7 @@ public class GoogleDriveAPI implements FileStorage {
         } catch (IOException e) {
             System.out.println("An error occurred: " + e);
         }
-         
+
 
         //download the file
         OutputStream outputStream = null;
@@ -550,29 +554,46 @@ public class GoogleDriveAPI implements FileStorage {
 
     }
 
+
+    //provera da li vec postoji storage
+
     @Override
-    public void initializeStorage(String s) {
+    public void initializeStorage(String rootName) {
         try {
             this.service = getDriveService();
         } catch (IOException e) {
             e.printStackTrace();
         }
 
-        //mozda bespotrebna implementacija jedne instance nase GoogleDrive klase
-        this.fileStorageInstance = new GoogleDriveAPI();
+        // TODO: redosled SVIH linija koda
+
+        //local storage path kreiranje
+        String rootPath = "C:/" + rootName;
+        java.io.File storageRoot = new java.io.File(rootPath);
+        if(!storageRoot.exists())
+            storageRoot.mkdir();
 
         //lokalni download folder
-        java.io.File downloadFolder = new java.io.File("C:/skladiste/download/");
-        downloadFolder.mkdir();
+        java.io.File downloadFolder = new java.io.File(rootPath + "/download");
+        String downloadPath = rootPath + "/download";
+        if(!downloadFolder.exists())
+            downloadFolder.mkdir();
+
+        //putanje do json fajlova
+        String configLocalPath = rootPath + "/config.json";
+        String usersLocalPath = rootPath + "/users.json";
 
         boolean isStorage = false;
         Scanner scanner = new Scanner(System.in);
-        File file = new File();
-        file.setName(s);
-        if (findFile("users.json") && (getFile("users.json").getParents() == null) && findFile("config.json") && (getFile("config.json").getParents() == null))
-            isStorage = true;
 
-        /*
+
+        // TODO proveriti da li je findFile validna metoda za ovako nesto?
+        if(findFile(rootName)) {
+            System.out.println(getFile(rootName).getDescription());
+            if (getFile(rootName).getDescription().equalsIgnoreCase("SKLADISTE"))
+                isStorage = true;
+        }
+
         // Ako jeste skladiste, procitaj user i config fajlove
         if(isStorage){
             System.out.println("Direktorijum je vec skladiste. Unesite username i password kako biste se konektovali na skladiste.");
@@ -584,7 +605,7 @@ public class GoogleDriveAPI implements FileStorage {
             ObjectMapper objectMapper = new ObjectMapper();
             User user = null;
             try {
-                user = objectMapper.readValue(new java.io.File(path + "/users.json"), User.class);
+                user = objectMapper.readValue(new java.io.File(usersLocalPath), User.class);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -593,13 +614,14 @@ public class GoogleDriveAPI implements FileStorage {
             if(username.equalsIgnoreCase(user.getUsername()) && password.equalsIgnoreCase(user.getPassword())){
                 try {
                     // Ako se podaci User-a match-uju, procitaj config, setuj trenutni storage i dodaj skladiste u listu skladista
-                    StorageModel storageModel = objectMapper.readValue(new java.io.File(path + "/config.json"), StorageModel.class);
-                    this.storageModelList.add(storageModel);
+                    DriveStorageModel storageModel = objectMapper.readValue(new java.io.File(configLocalPath), DriveStorageModel.class);
+                    this.driveStorageModelList.add(storageModel);
                     setCurrentStorage(storageModel);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             } else {
+                //TODO: throw exception
                 System.out.println("Neispravan username ili password!");
                 return;
             }
@@ -609,6 +631,9 @@ public class GoogleDriveAPI implements FileStorage {
             String choice = scanner.nextLine();
 
             if(choice.equalsIgnoreCase("DA")){
+
+                createStorage(rootName);
+
                 System.out.println("Unesite username i password kako biste kreirali skladiste.");
                 System.out.println("Username:");
                 String username = scanner.nextLine();
@@ -617,8 +642,20 @@ public class GoogleDriveAPI implements FileStorage {
 
                 User user = new User(username, password);
                 user.setPrivileges(Set.of(Privileges.values()));
-                StorageModel storageModel = new StorageModel(user, path);
-                this.storageModelList.add(storageModel);
+
+//                //pravimo users.json i config.json U DRIVEU
+//                File usersDrive = new File().setName("users.json");
+//                File configDrive = new File().setName("config.json");
+
+                //pravimo users.json i config.json U LOKALNOM
+                java.io.File usersLocal = new java.io.File(usersLocalPath);
+                java.io.File configLocal = new java.io.File(configLocalPath);
+
+                DriveStorageModel storageModel = new DriveStorageModel(user, rootName, downloadPath, usersLocal, configLocal);
+                put(usersLocalPath, rootName);
+                put(configLocalPath, rootName);
+
+                this.driveStorageModelList.add(storageModel);
                 setCurrentStorage(storageModel);
             } else {
                 System.out.println("Skladiste nije kreirano.");
@@ -627,14 +664,7 @@ public class GoogleDriveAPI implements FileStorage {
 
         }
 
-         */
-
-        // TODO: napraviti user.json i config.json fajlove da li ih bolje praviti u C:/skladiste gde je i download folder ili samo direktno na drajv?
-        this.users = new File().setName("users.json");
-        this.config = new File().setName("config.json");
-
     }
-
     @Override
     public void limitNumberOfFiles(int i, String s) {
 
@@ -655,6 +685,7 @@ public class GoogleDriveAPI implements FileStorage {
 
     }
 
+
     @Override
     public void disconnectUser(AbstractUser abstractUser) {
 
@@ -665,7 +696,7 @@ public class GoogleDriveAPI implements FileStorage {
         String id = null;
         try {
             result = service.files().list()
-                    .setFields("files(id, name, mimeType, size)")
+                    .setFields("files(id, name, mimeType, size, description)")
                     .execute();
         } catch (IOException e) {
             e.printStackTrace();
@@ -681,13 +712,14 @@ public class GoogleDriveAPI implements FileStorage {
     }
 
     //MOZE BITI PROBLEMATICNA METODA
-    public boolean findFile(String s){
+
+    protected boolean findFile(String s){
         FileList result = null;
         String id = null;
         boolean check = false;
         try {
             result = service.files().list()
-                    .setFields("files(id, name, mimeType, size)")
+                    .setFields("files(id, name, mimeType, size, description)")
                     .execute();
         } catch (IOException e) {
             e.printStackTrace();
@@ -698,7 +730,7 @@ public class GoogleDriveAPI implements FileStorage {
                 id = f.getName();
                 if(s.contentEquals(id))
                     check = true;
-                System.out.println("File/Folder ID found!");
+                System.out.println("File/Folder boolean found!");
             }
         }
         return check;
@@ -709,7 +741,7 @@ public class GoogleDriveAPI implements FileStorage {
         File targetFile = null;
         try {
             result = service.files().list()
-                    .setFields("files(id, name, mimeType, size)")
+                    .setFields("files(id, name, mimeType, size, description)")
                     .execute();
         } catch (IOException e) {
             e.printStackTrace();
@@ -722,5 +754,31 @@ public class GoogleDriveAPI implements FileStorage {
             }
         }
         return targetFile;
+    }
+
+    private void createStorage(String folderName) {
+        File fileMetadata = new File();
+        fileMetadata.setName(folderName);
+        fileMetadata.setMimeType("application/vnd.google-apps.folder");
+        fileMetadata.setDescription("SKLADISTE");
+
+        File file = null;
+        try {
+            file = service.files().create(fileMetadata)
+                    .setFields("id")
+                    .execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println("Storage created!");
+        System.out.println("Storage ID: " + file.getId());
+    }
+
+    public DriveStorageModel getCurrentStorage() {
+        return currentStorage;
+    }
+
+    public void setCurrentStorage(DriveStorageModel currentStorage) {
+        this.currentStorage = currentStorage;
     }
 }
