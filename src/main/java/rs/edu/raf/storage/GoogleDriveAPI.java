@@ -109,6 +109,8 @@ public class GoogleDriveAPI implements FileStorage {
 
 
     // IMPLEMENTACIJA METODA IZ FILE STORAGE-A
+    //TODO: Kreiranje vise Foldera i Fajlova odjednom
+    //TODO: Kreiranje mogucnost smestanja vise fajlova/foldera odjednom
 
     @Override
     public void createFolder(String path, String folderName) {
@@ -118,6 +120,8 @@ public class GoogleDriveAPI implements FileStorage {
         fileMetadata.setName(folderName);
         fileMetadata.setMimeType("application/vnd.google-apps.folder");
         fileMetadata.setParents(Collections.singletonList(folderId));
+        getCurrentStorageModel().setCurrNumberOfFiles(getCurrentStorageModel().getCurrNumberOfFiles()+1);
+        getCurrentStorageModel().updateConfig();
 
         File file = null;
         try {
@@ -141,6 +145,8 @@ public class GoogleDriveAPI implements FileStorage {
         fileMetadata.setParents(Collections.singletonList(folderId));
         //java.io.File filePath = new java.io.File();
         //FileContent mediaContent = new FileContent(null, filePath);
+        getCurrentStorageModel().setCurrNumberOfFiles(getCurrentStorageModel().getCurrNumberOfFiles()+1);
+        getCurrentStorageModel().updateConfig();
 
         File file = null;
         try {
@@ -160,6 +166,8 @@ public class GoogleDriveAPI implements FileStorage {
         fileMetadata.setName(folderName);
         fileMetadata.setMimeType("application/vnd.google-apps.folder");
         fileMetadata.setParents(Collections.singletonList(currentStorage));
+        getCurrentStorageModel().setCurrNumberOfFiles(getCurrentStorageModel().getCurrNumberOfFiles()+1);
+        getCurrentStorageModel().updateConfig();
 
         File file = null;
         try {
@@ -178,6 +186,8 @@ public class GoogleDriveAPI implements FileStorage {
         File fileMetadata = new File();
         fileMetadata.setName(filename);
         fileMetadata.setParents(Collections.singletonList(currentStorage));
+        getCurrentStorageModel().setCurrNumberOfFiles(getCurrentStorageModel().getCurrNumberOfFiles()+1);
+        getCurrentStorageModel().updateConfig();
 
 
         File file = null;
@@ -195,11 +205,16 @@ public class GoogleDriveAPI implements FileStorage {
     @Override
     public void delete(String path) {
         String fileId = findID(path);
+        if(getFile(path).getDescription().equalsIgnoreCase("SKLADISTE")){
+            System.out.println("Nije moguce obrisati skladiste, vec samo fajlove i direktorijume unutar njega.");
+        }
         try {
             service.files().delete(fileId).execute();
         } catch (IOException e) {
             System.out.println("An error occurred: " + e);
         }
+        getCurrentStorageModel().setCurrNumberOfFiles(getCurrentStorageModel().getCurrNumberOfFiles()-1);
+        getCurrentStorageModel().updateConfig();
         System.out.println("File " + path + " deleted!");
     }
 
@@ -420,6 +435,8 @@ public class GoogleDriveAPI implements FileStorage {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        getCurrentStorageModel().setCurrNumberOfFiles(getCurrentStorageModel().getCurrNumberOfFiles()+1);
+        getCurrentStorageModel().updateConfig();
         System.out.println("File uploaded into Google Drive Storage - File ID: " + file.getId());
     }
 
