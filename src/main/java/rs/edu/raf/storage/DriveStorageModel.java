@@ -2,6 +2,7 @@ package rs.edu.raf.storage;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -13,10 +14,10 @@ public class DriveStorageModel {
 
     //TODO: DODAJ POLJE storageID !!!!!
 
-    private java.io.File usersJSON;
-    private java.io.File configJSON;
+    private String usersJSON;
+    private String configJSON;
     private String downloadFolder;
-    private String rootDirectory;
+    private String currentStorageName;
     private User superuser;
     private User currentUser;
     private int currNumberOfFiles;
@@ -27,11 +28,11 @@ public class DriveStorageModel {
 
     }
 
-    public DriveStorageModel(User user, String storageName, String downloadFolder, java.io.File usersPath, java.io.File configPath) {
+    public DriveStorageModel(User user, String storageName, String downloadFolder, String usersPath, String configPath) {
 
         // Inicijalizacija parametara:
         this.currNumberOfFiles = 1;  //1 zbog download foldera
-        this.rootDirectory = storageName;
+        this.currentStorageName = storageName;
         this.downloadFolder = downloadFolder;
         this.superuser = user;
         this.currentUser = user;
@@ -40,18 +41,16 @@ public class DriveStorageModel {
         this.configJSON = configPath;
 
         try {
-            mapper.writeValue(usersJSON, user);
-            mapper.writeValue(configJSON, this);
-            currNumberOfFiles += 2; // inkrementiramo trenutni broj fajlova u skladistu
-            updateConfig();
+            mapper.writeValue(new File(usersJSON), user);
+            mapper.writeValue(new File(configJSON), this);
         } catch (IOException e) {
             e.printStackTrace();
         }
 
     }
 
-    public String getRootDirectory() {
-        return rootDirectory;
+    public String getCurrentStorageName() {
+        return currentStorageName;
     }
 
     public List<User> getUserList() {
@@ -83,8 +82,8 @@ public class DriveStorageModel {
         this.downloadFolder = downloadFolder;
     }
 
-    public void setRootDirectory(String rootDirectory) {
-        this.rootDirectory = rootDirectory;
+    public void setCurrentStorageName(String currentStorageName) {
+        this.currentStorageName = currentStorageName;
     }
 
     public User getCurrentUser() {
@@ -105,7 +104,7 @@ public class DriveStorageModel {
 
     void updateConfig(){
         try {
-            mapper.writeValue(configJSON, this);
+            mapper.writeValue(new File(configJSON), this);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -113,10 +112,25 @@ public class DriveStorageModel {
 
     void updateUsers(){
         try {
-            mapper.writeValue(usersJSON, userList);
+            mapper.writeValue(new File(usersJSON), userList);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
+    public String getUsersJSON() {
+        return usersJSON;
+    }
+
+    public void setUsersJSON(String usersJSON) {
+        this.usersJSON = usersJSON;
+    }
+
+    public String getConfigJSON() {
+        return configJSON;
+    }
+
+    public void setConfigJSON(String configJSON) {
+        this.configJSON = configJSON;
+    }
 }
