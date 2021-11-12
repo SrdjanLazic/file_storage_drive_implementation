@@ -31,7 +31,7 @@ public class DriveStorageModel {
     public DriveStorageModel(User user, String storageName, String downloadFolder, String usersPath, String configPath) {
 
         // Inicijalizacija parametara:
-        this.currNumberOfFiles = 1;  //1 zbog download foldera
+        this.currNumberOfFiles = 0;
         this.currentStorageName = storageName;
         this.downloadFolder = downloadFolder;
         this.superuser = user;

@@ -119,6 +119,10 @@ public class GoogleDriveAPI implements FileStorage {
     public void createFolder(String path, String ... folderNames) {
 
         String folderId = findID(path);
+        if(folderId == null){
+            System.out.println("Nije pronadjena lokacija gde zelite napraviti folder");
+            return;
+        }
         for(String i : folderNames) {
             String folderName = i;
             File fileMetadata = new File();
@@ -145,6 +149,10 @@ public class GoogleDriveAPI implements FileStorage {
     public void createFile(String path, String ... filenames) {
 
         String folderId = findID(path);
+        if(folderId == null){
+            System.out.println("Nije pronadjena lokacija gde zelite napraviti fajl");
+            return;
+        }
         for(String i : filenames) {
             String filename = i;
             File fileMetadata = new File();
@@ -174,19 +182,19 @@ public class GoogleDriveAPI implements FileStorage {
             fileMetadata.setName(folderName);
             fileMetadata.setMimeType("application/vnd.google-apps.folder");
             fileMetadata.setParents(Collections.singletonList(getCurrentStorageID()));
-            getCurrentStorageModel().setCurrNumberOfFiles(getCurrentStorageModel().getCurrNumberOfFiles() + 1);
-            reuploadJSONS();
 
-            File file = null;
-            try {
-                file = service.files().create(fileMetadata)
+        File file = null;
+        try {
+            file = service.files().create(fileMetadata)
                         .setFields("id, name, parents")
                         .execute();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            System.out.println("Folder " + file.getName() + " created!");
-            System.out.println("Folder ID: " + file.getId());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println("Folder " + file.getName() + " created!");
+        System.out.println("Folder ID: " + file.getId());
+        getCurrentStorageModel().setCurrNumberOfFiles(getCurrentStorageModel().getCurrNumberOfFiles() + 1);
+        reuploadJSONS();
     }
 
     @Override
@@ -194,20 +202,20 @@ public class GoogleDriveAPI implements FileStorage {
             File fileMetadata = new File();
             fileMetadata.setName(filename);
             fileMetadata.setParents(Collections.singletonList(getCurrentStorageID()));
-            getCurrentStorageModel().setCurrNumberOfFiles(getCurrentStorageModel().getCurrNumberOfFiles() + 1);
-            reuploadJSONS();
 
 
-            File file = null;
-            try {
-                file = service.files().create(fileMetadata)
+        File file = null;
+        try {
+            file = service.files().create(fileMetadata)
                         .setFields("id, name, parents")
                         .execute();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            System.out.println("File " + file.getName() + " created!");
-            System.out.println("File ID: " + file.getId());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println("File " + file.getName() + " created!");
+        System.out.println("File ID: " + file.getId());
+        getCurrentStorageModel().setCurrNumberOfFiles(getCurrentStorageModel().getCurrNumberOfFiles() + 1);
+        reuploadJSONS();
     }
 
     @Override
@@ -218,7 +226,7 @@ public class GoogleDriveAPI implements FileStorage {
             if(path.contentEquals("users.json") || path.contentEquals("config.json")){
                 System.out.println("Nije moguce obrisati users.json i config.json fajlove");
             }
-            else if (getFile(path).getDescription().equalsIgnoreCase("SKLADISTE")) {
+            else if (getFile(path).getName().contentEquals(currentStorage)) {
                 System.out.println("Nije moguce obrisati skladiste, vec samo fajlove i direktorijume unutar njega.");
             }
             else {
@@ -274,7 +282,7 @@ public class GoogleDriveAPI implements FileStorage {
         FileList result = null;
         try {
             result = service.files().list()
-                    .setFields("files(id, name, mimeType, size, description)")
+                    .setFields("files(id, parents, name, mimeType, size, description)")
                     .execute();
         } catch (IOException e) {
             e.printStackTrace();
@@ -289,7 +297,8 @@ public class GoogleDriveAPI implements FileStorage {
             System.out.println("Files:");
             for (File file : files) {
                 //TODO: proveriti da li izlistava i subfoldere i subfajlove skladista
-                if(file.getParents().contains(currentStorage)) {
+                //ne radi subfoldere i fajlove trenutno
+                if(!(file.getParents()==null) && file.getParents().contains(getCurrentStorageID())) {
                     Long size;
                     System.out.printf("%s (%s)\n", file.getName(), file.getId());
                     type = (file.getMimeType().equals("application/vnd.google-apps.folder")) ? "FOLDER" : "FILE";
@@ -310,7 +319,7 @@ public class GoogleDriveAPI implements FileStorage {
         FileList result = null;
         try {
             result = service.files().list()
-                    .setFields("files(id, name, mimeType, size, modifiedTime, createdTime, description)")
+                    .setFields("files(id, parents, name, mimeType, size, modifiedTime, createdTime, description)")
                     .execute();
         } catch (IOException e) {
             e.printStackTrace();
@@ -328,7 +337,7 @@ public class GoogleDriveAPI implements FileStorage {
             System.out.println("\nLista fajlova sa datom ekstenzijom u skladistu:");
             System.out.println("------------------------------------------------\n");
             for (File file : files) {
-                if (file.getName().endsWith(extension) && file.getParents().contains(currentStorage))
+                if (file.getName().endsWith(extension) && !(file.getParents()==null) && file.getParents().contains(getCurrentStorageID()))
                     System.out.printf("%s (%s)\n", file.getName(), file.getId());
             }
         } else if (operation == Operations.FILTER_FILENAME) {
@@ -336,7 +345,7 @@ public class GoogleDriveAPI implements FileStorage {
             System.out.println("\nLista fajlova ciji nazivi sadrze dati tekst:");
             System.out.println("----------------------------------------------\n");
             for (File file : files) {
-                if (file.getName().contains(filename) && file.getParents().contains(currentStorage))
+                if (file.getName().contains(filename) && !(file.getParents()==null) && file.getParents().contains(getCurrentStorageID()))
                     System.out.printf("%s (%s)\n", file.getName(), file.getId());
             }
         } else if (operation == Operations.SORT_BY_NAME_ASC || operation == Operations.SORT_BY_NAME_DESC) {
@@ -370,7 +379,7 @@ public class GoogleDriveAPI implements FileStorage {
                 } else{
                     size = file.getSize();
                 }
-                if(file.getParents().contains(currentStorage))
+                if(!(file.getParents()==null) && file.getParents().contains(getCurrentStorageID()))
                     System.out.println( name + " --- " + size / (1024) + " kB " + " --- " + type);
             }
         } else if (operation == Operations.SORT_BY_DATE_MODIFIED_ASC || operation == Operations.SORT_BY_DATE_MODIFIED_DESC) {
@@ -411,7 +420,7 @@ public class GoogleDriveAPI implements FileStorage {
                     modtime = file.getModifiedTime();
                 }
                 //type = (file.getMimeType().equalsIgnoreCase("application/vnd.google-apps.folder")) ? "FOLDER" : "FILE";
-                if(file.getParents().contains(currentStorage))
+                if(!(file.getParents()==null) && file.getParents().contains(getCurrentStorageID()))
                     System.out.println(name + " --- " + size / (1024) + " kB" + " --- " + type + " --- " + sdf.format(modtime.toStringRfc3339()));
             }
         } else if (operation == Operations.SORT_BY_DATE_CREATED) {
@@ -427,7 +436,7 @@ public class GoogleDriveAPI implements FileStorage {
                     size = file.getSize();
                 }
                 type = (file.getMimeType().equalsIgnoreCase("application/vnd.google-apps.folder")) ? "FOLDER" : "FILE";
-                if(file.getParents().contains(currentStorage))
+                if(!(file.getParents()==null) && file.getParents().contains(getCurrentStorageID()))
                     System.out.println(file.getName() + " --- " + size / (1024) + " kB" + " --- " + type + " --- " + sdf.format(file.getCreatedTime().toStringRfc3339()));
             }
         }
@@ -552,7 +561,7 @@ public class GoogleDriveAPI implements FileStorage {
 
         // Proveravamo ako vec postoji folder sa ovim imenom koji je skladiste (uz pomoc description taga 'SKLADISTE')
         if(findFile(rootName)) {
-            System.out.println(getFile(rootName).getDescription());
+            //TODO: popraviti security ili pristup ovoj stavci za SKLADISTE
             if (getFile(rootName).getDescription().equalsIgnoreCase("SKLADISTE")){
                 isStorage = true;
                 currentStorage = rootName;
@@ -622,8 +631,7 @@ public class GoogleDriveAPI implements FileStorage {
                 DriveStorageModel storageModel = new DriveStorageModel(user, rootName, downloadPath, usersLocalPath, configLocalPath);
                 this.driveStorageModelList.add(storageModel);
                 setCurrentStorageModel(storageModel);
-                put(rootName, usersLocalPath);
-                put(rootName, configLocalPath);
+                put(rootName, usersLocalPath, configLocalPath);
 
             } else {
                 System.out.println("Skladiste nije kreirano.");
@@ -745,23 +753,39 @@ public class GoogleDriveAPI implements FileStorage {
 
     private void reuploadJSONS() {
         getCurrentStorageModel().updateConfig();
+        //TODO videti kada treba users fajl updateovati
+        //getCurrentStorageModel().updateUsers();
+        //,getCurrentStorageModel().getUsersJSON()
         reupload(currentStorage, getCurrentStorageModel().getConfigJSON());
-        getCurrentStorageModel().updateUsers();
-        reupload(currentStorage, getCurrentStorageModel().getUsersJSON());
     }
 
     private void reupload(String destination, String ... sources) {
-        String folderId = findID(destination);
+        String folderId = currentStorageID;
+        //delete old json on drive
+        for(String i : sources) {
+            String source = i;
+            if(source.contains("config"))
+                source = "config.json";
+            else if(source.contains("users"))
+                source = "users.json";
+            String fileId = findID(source);
+            try {
+                service.files().delete(fileId).execute();
+            } catch (IOException e) {
+                System.out.println("An error occurred: " + e);
+            }
+            getCurrentStorageModel().setCurrNumberOfFiles(getCurrentStorageModel().getCurrNumberOfFiles() - 1);
+            System.out.println("File " + source + " deleted!");
+        }
+        //reupload new one
         for(String i : sources) {
             String source = i;
             Path original = Paths.get(source);
             java.io.File temp = new java.io.File(String.valueOf(original));
 
             File fileMetadata = new File();
+            //fileMetadata.setName(temp.getName());
             fileMetadata.setName(temp.getName());
-            if (temp.isDirectory()) {
-                fileMetadata.setMimeType("application/vnd.google-apps.folder");
-            }
             fileMetadata.setParents(Collections.singletonList(folderId));
             //java.io.File filePath = new java.io.File();
             FileContent mediaContent = new FileContent(null, temp);
@@ -776,7 +800,7 @@ public class GoogleDriveAPI implements FileStorage {
             }
             int filecount = getCurrentStorageModel().getCurrNumberOfFiles();
             getCurrentStorageModel().setCurrNumberOfFiles(filecount + 1);
-            System.out.println("File uploaded into Google Drive Storage - File ID: " + file.getId());
+            System.out.println("File reuploaded into Google Drive Storage - File ID: " + file.getId());
         }
     }
 
