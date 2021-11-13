@@ -277,7 +277,8 @@ public class GoogleDriveAPI implements FileStorage {
     }
 
     @Override
-    public void list() {
+    public void list(String path) {
+        String folderID = findID(path);
         String type;
         FileList result = null;
         try {
@@ -298,7 +299,7 @@ public class GoogleDriveAPI implements FileStorage {
             for (File file : files) {
                 //TODO: proveriti da li izlistava i subfoldere i subfajlove skladista
                 //ne radi subfoldere i fajlove trenutno
-                if(!(file.getParents()==null) && file.getParents().contains(getCurrentStorageID())) {
+                if(!(file.getParents()==null) && file.getParents().contains(folderID)) {
                     Long size;
                     System.out.printf("%s (%s)\n", file.getName(), file.getId());
                     type = (file.getMimeType().equals("application/vnd.google-apps.folder")) ? "FOLDER" : "FILE";
@@ -314,7 +315,8 @@ public class GoogleDriveAPI implements FileStorage {
     }
 
     @Override
-    public void list(String argument, Operations operation) {
+    public void list(String path, String argument, Operations operation) {
+        String folderID = findID(path);
         String type;
         FileList result = null;
         try {
@@ -331,13 +333,13 @@ public class GoogleDriveAPI implements FileStorage {
         if (files == null || files.isEmpty()) {
             System.out.println("No files found.");
         }
-
+        // TODO: extenzije srediti
         if (operation == Operations.FILTER_EXTENSION) {
             String extension = argument;
             System.out.println("\nLista fajlova sa datom ekstenzijom u skladistu:");
             System.out.println("------------------------------------------------\n");
             for (File file : files) {
-                if (file.getName().endsWith(extension) && !(file.getParents()==null) && file.getParents().contains(getCurrentStorageID()))
+                if (file.getName().endsWith(extension) && !(file.getParents()==null) && file.getParents().contains(folderID))
                     System.out.printf("%s (%s)\n", file.getName(), file.getId());
             }
         } else if (operation == Operations.FILTER_FILENAME) {
@@ -345,7 +347,7 @@ public class GoogleDriveAPI implements FileStorage {
             System.out.println("\nLista fajlova ciji nazivi sadrze dati tekst:");
             System.out.println("----------------------------------------------\n");
             for (File file : files) {
-                if (file.getName().contains(filename) && !(file.getParents()==null) && file.getParents().contains(getCurrentStorageID()))
+                if (file.getName().contains(filename) && !(file.getParents()==null) && file.getParents().contains(folderID))
                     System.out.printf("%s (%s)\n", file.getName(), file.getId());
             }
         } else if (operation == Operations.SORT_BY_NAME_ASC || operation == Operations.SORT_BY_NAME_DESC) {
@@ -391,7 +393,7 @@ public class GoogleDriveAPI implements FileStorage {
                 files.sort(new FileModifiedDateComparator().reversed());
                 order = " opadajuce ";
             }
-            SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
+           // SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
 
             System.out.println("\nLista fajlova i foldera sortirana" + order + "po datumu izmene:");
             System.out.println("-----------------------------------------------------\n");
@@ -420,12 +422,12 @@ public class GoogleDriveAPI implements FileStorage {
                     modtime = file.getModifiedTime();
                 }
                 //type = (file.getMimeType().equalsIgnoreCase("application/vnd.google-apps.folder")) ? "FOLDER" : "FILE";
-                if(!(file.getParents()==null) && file.getParents().contains(getCurrentStorageID()))
-                    System.out.println(name + " --- " + size / (1024) + " kB" + " --- " + type + " --- " + sdf.format(modtime.toStringRfc3339()));
+                if(!(file.getParents()==null) && file.getParents().contains(folderID))
+                    System.out.println(name + " --- " + size / (1024) + " kB" + " --- " + type + " --- " + modtime.toStringRfc3339());
             }
         } else if (operation == Operations.SORT_BY_DATE_CREATED) {
             files.sort(new FileDateCreatedComparator());
-            SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
+            //SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
             System.out.println("\nLista fajlova i foldera sortirana po datumu kreiranje:");
             System.out.println("-----------------------------------------------------\n");
             for (File file : files) {
@@ -436,8 +438,8 @@ public class GoogleDriveAPI implements FileStorage {
                     size = file.getSize();
                 }
                 type = (file.getMimeType().equalsIgnoreCase("application/vnd.google-apps.folder")) ? "FOLDER" : "FILE";
-                if(!(file.getParents()==null) && file.getParents().contains(getCurrentStorageID()))
-                    System.out.println(file.getName() + " --- " + size / (1024) + " kB" + " --- " + type + " --- " + sdf.format(file.getCreatedTime().toStringRfc3339()));
+                if(!(file.getParents()==null) && file.getParents().contains(folderID))
+                    System.out.println(file.getName() + " --- " + size / (1024) + " kB" + " --- " + type + " --- " + file.getCreatedTime().toStringRfc3339());
             }
         }
     }
@@ -508,8 +510,8 @@ public class GoogleDriveAPI implements FileStorage {
             }
             try {
                 if (fileMime.contains("vnd.google-apps.document")) {
-                    System.out.println("File is a google doc:");
-                    service.files().export(fileId, fileMime)
+                    System.out.println("File is a google doc");
+                    service.files().export(fileId, "application/pdf")
                             .executeMediaAndDownloadTo(outputStream);
                     outputStream.flush();
                     outputStream.close();
