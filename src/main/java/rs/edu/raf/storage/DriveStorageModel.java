@@ -20,8 +20,12 @@ public class DriveStorageModel {
     private String currentStorageName;
     private User superuser;
     private User currentUser;
+    private long storageSizeLimit;
     private int currNumberOfFiles;
+    private boolean maxNumberOfFilesInDirectorySet = false;
+    private Map<String, Integer> maxNumberOfFilesInDirectory = new HashMap<>();
     private List<User> userList = new ArrayList<>();
+    private List<String> unsupportedExtensions = new ArrayList<>();
     private transient ObjectMapper mapper = new ObjectMapper();
 
     public DriveStorageModel(){
@@ -37,7 +41,7 @@ public class DriveStorageModel {
         this.superuser = user;
         this.currentUser = user;
         this.userList.add(user);
-        this.usersJSON = usersPath;  // TODO: pisanje svih juzera
+        this.usersJSON = usersPath;
         this.configJSON = configPath;
 
         try {
@@ -53,12 +57,40 @@ public class DriveStorageModel {
         return currentStorageName;
     }
 
+    public void setCurrentStorageName(String currentStorageName) {
+        this.currentStorageName = currentStorageName;
+    }
+
+    public long getStorageSizeLimit() {
+        return storageSizeLimit;
+    }
+
+    public List<String> getUnsupportedExtensions() {
+        return unsupportedExtensions;
+    }
+
+    public void setStorageSizeLimit(long storageSizeLimit) {
+        this.storageSizeLimit = storageSizeLimit;
+    }
+
+    public void setUnsupportedExtensions(List<String> unsupportedExtensions) {
+        this.unsupportedExtensions = unsupportedExtensions;
+    }
+
     public List<User> getUserList() {
         return userList;
     }
 
     public void setUserList(List<User> userList) {
         this.userList = userList;
+    }
+
+    public Map<String, Integer> getMaxNumberOfFilesInDirectory() {
+        return maxNumberOfFilesInDirectory;
+    }
+
+    public void setMaxNumberOfFilesInDirectory(Map<String, Integer> maxNumberOfFilesInDirectory) {
+        this.maxNumberOfFilesInDirectory = maxNumberOfFilesInDirectory;
     }
 
     public int getCurrNumberOfFiles() {
@@ -80,10 +112,6 @@ public class DriveStorageModel {
 
     public void setDownloadFolder(String downloadFolder) {
         this.downloadFolder = downloadFolder;
-    }
-
-    public void setCurrentStorageName(String currentStorageName) {
-        this.currentStorageName = currentStorageName;
     }
 
     public User getCurrentUser() {
@@ -116,6 +144,31 @@ public class DriveStorageModel {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    @Override
+    public String toString() {
+        return "StorageModel{" +
+                "usersJSON=" + usersJSON +
+                ", configJSON=" + configJSON +
+                ", downloadFolder='" + downloadFolder + '\'' +
+                ", currentStorageName='" + currentStorageName + '\'' +
+                ", superuser=" + superuser +
+                ", currentUser=" + currentUser +
+                ", storageSize=" + storageSizeLimit +
+                ", userList=" + userList +
+                ", unsupportedExtensions=" + unsupportedExtensions +
+                ", maxNumberOfFilesInDirectory=" + maxNumberOfFilesInDirectory +
+                ", mapper=" + mapper +
+                '}';
+    }
+
+    public boolean isMaxNumberOfFilesInDirectorySet() {
+        return maxNumberOfFilesInDirectorySet;
+    }
+
+    public void setMaxNumberOfFilesInDirectorySet(boolean maxNumberOfFilesInDirectorySet) {
+        this.maxNumberOfFilesInDirectorySet = maxNumberOfFilesInDirectorySet;
     }
 
     public String getUsersJSON() {

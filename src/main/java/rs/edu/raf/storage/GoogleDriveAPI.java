@@ -18,8 +18,10 @@ import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
 import rs.edu.raf.storage.enums.Operations;
 import rs.edu.raf.storage.enums.Privileges;
+import rs.edu.raf.storage.exceptions.*;
 
 import java.io.*;
+import java.io.FileNotFoundException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
@@ -110,13 +112,15 @@ public class GoogleDriveAPI implements FileStorage {
 
 
     // IMPLEMENTACIJA METODA IZ FILE STORAGE-A
-    //TODO: Kreiranje vise Foldera i Fajlova odjednom
-    //TODO: Kreiranje mogucnost smestanja vise fajlova/foldera odjednom
     //TODO: Dodati checkove za MaxFile, MaxSize, currNumber, generalno za provere oko memorije i kolicine fajlova
     //TODO: Dodati exceptione i rad sa njima u vezi sa metodama iz specifikacije
 
     @Override
-    public void createFolder(String path, String ... folderNames) {
+    public void createFolder(String path, String ... folderNames) throws InsufficientPrivilegesException{
+        //provera da li trenutni korisnik ima privilegiju za kreiranje
+        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.WRITE)){
+            throw new InsufficientPrivilegesException();
+        }
 
         String folderId = findID(path);
         if(folderId == null){
@@ -146,14 +150,33 @@ public class GoogleDriveAPI implements FileStorage {
     }
 
     @Override
-    public void createFile(String path, String ... filenames) {
+    public void createFile(String path, String ... filenames) throws InvalidExtensionException, InsufficientPrivilegesException{
+
+        //provera da li trenutni korisnik ima privilegiju za kreiranje
+        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.WRITE)){
+            throw new InsufficientPrivilegesException();
+        }
+
+        // Provera da li cemo prekoraciti broj fajlova u nekom folderu:
+        // Prvo proverava da li u HashMap-u postoji folder u kojem se kreira novi fajl
+        // Ako postoji, proverava da li (trenutni broj fajlova u tom folderu + 1) prekoracuje maksimalan definisani iz HashMap-a
+        if(currentStorageModel.getMaxNumberOfFilesInDirectory().containsKey(currentStorageModel.getCurrentStorageName())){
+            int numberOfFiles = currentStorageModel.getCurrNumberOfFiles(); //TODO: samo radi za root, srediti da radi i za fajlove
+            if(numberOfFiles > currentStorageModel.getMaxNumberOfFilesInDirectory().get(getCurrentStorageModel()))
+                throw new FileLimitExceededException();
+        }
 
         String folderId = findID(path);
         if(folderId == null){
             System.out.println("Nije pronadjena lokacija gde zelite napraviti fajl");
-            return;
+            throw new rs.edu.raf.storage.exceptions.FileNotFoundException();
         }
         for(String i : filenames) {
+
+            if(checkExtensions(i)){
+                throw new InvalidExtensionException();
+            }
+
             String filename = i;
             File fileMetadata = new File();
             fileMetadata.setName(filename);
@@ -177,11 +200,17 @@ public class GoogleDriveAPI implements FileStorage {
     }
 
     @Override
-    public void createFolder(String folderName) {
-            File fileMetadata = new File();
-            fileMetadata.setName(folderName);
-            fileMetadata.setMimeType("application/vnd.google-apps.folder");
-            fileMetadata.setParents(Collections.singletonList(getCurrentStorageID()));
+    public void createFolder(String folderName) throws InsufficientPrivilegesException{
+
+        //provera da li trenutni korisnik ima privilegiju za kreiranje
+        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.WRITE)){
+            throw new InsufficientPrivilegesException();
+        }
+
+        File fileMetadata = new File();
+        fileMetadata.setName(folderName);
+        fileMetadata.setMimeType("application/vnd.google-apps.folder");
+        fileMetadata.setParents(Collections.singletonList(getCurrentStorageID()));
 
         File file = null;
         try {
@@ -198,11 +227,29 @@ public class GoogleDriveAPI implements FileStorage {
     }
 
     @Override
-    public void createFile(String filename) {
-            File fileMetadata = new File();
-            fileMetadata.setName(filename);
-            fileMetadata.setParents(Collections.singletonList(getCurrentStorageID()));
+    public void createFile(String filename) throws InvalidExtensionException, InsufficientPrivilegesException{
 
+        //provera da li trenutni korisnik ima privilegiju za kreiranje
+        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.WRITE)){
+            throw new InsufficientPrivilegesException();
+        }
+
+        if(checkExtensions(filename)){
+            throw new InvalidExtensionException();
+        }
+
+        // Provera da li cemo prekoraciti broj fajlova u nekom folderu:
+        // Prvo proverava da li u HashMap-u postoji folder u kojem se kreira novi fajl
+        // Ako postoji, proverava da li (trenutni broj fajlova u tom folderu + 1) prekoracuje maksimalan definisani iz HashMap-a
+        if(currentStorageModel.getMaxNumberOfFilesInDirectory().containsKey(currentStorageModel.getCurrentStorageName())){
+            int numberOfFiles = currentStorageModel.getCurrNumberOfFiles(); //TODO: samo radi za root, srediti da radi i za fajlove
+            if(numberOfFiles > currentStorageModel.getMaxNumberOfFilesInDirectory().get(getCurrentStorageModel()))
+                throw new FileLimitExceededException();
+        }
+
+        File fileMetadata = new File();
+        fileMetadata.setName(filename);
+        fileMetadata.setParents(Collections.singletonList(getCurrentStorageID()));
 
         File file = null;
         try {
@@ -219,15 +266,28 @@ public class GoogleDriveAPI implements FileStorage {
     }
 
     @Override
-    public void delete(String ... paths) {
+    public void delete(String ... paths) throws InsufficientPrivilegesException, rs.edu.raf.storage.exceptions.FileNotFoundException {
+
+        //provera da li trenutni korisnik ima privilegiju za brisanje
+        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.DELETE)){
+            throw new InsufficientPrivilegesException();
+        }
+
         for(String i: paths) {
             String path = i;
             String fileId = findID(path);
+
+            if(fileId == null)
+                throw new rs.edu.raf.storage.exceptions.FileNotFoundException();
+
+            //TODO: Exceptione za ova dva if-a
             if(path.contentEquals("users.json") || path.contentEquals("config.json")){
                 System.out.println("Nije moguce obrisati users.json i config.json fajlove");
+                throw new InsufficientPrivilegesException();
             }
             else if (getFile(path).getName().contentEquals(currentStorage)) {
                 System.out.println("Nije moguce obrisati skladiste, vec samo fajlove i direktorijume unutar njega.");
+                throw new InsufficientPrivilegesException();
             }
             else {
                 try {
@@ -244,7 +304,24 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public void move(String destination, String ... sources) {
+        //provera da li trenutni korisnik ima privilegiju za kreiranje
+        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.WRITE)){
+            throw new InsufficientPrivilegesException();
+        }
+
         String folderId = findID(destination);
+        if(folderId == null){
+            System.out.println("Nije pronadjena lokacija gde zelite napraviti fajl");
+            throw new rs.edu.raf.storage.exceptions.FileNotFoundException();
+        }
+
+        //provera za maximalan broj fajlova
+        if(currentStorageModel.getMaxNumberOfFilesInDirectory().containsKey(currentStorageModel.getCurrentStorageName())){
+            int numberOfFiles = currentStorageModel.getCurrNumberOfFiles(); //TODO: samo radi za root, srediti da radi i za fajlove
+            if(numberOfFiles > currentStorageModel.getMaxNumberOfFilesInDirectory().get(getCurrentStorageModel()))
+                throw new FileLimitExceededException();
+        }
+
         for(String i : sources) {
             String source = i;
             String fileId = findID(source);
@@ -258,6 +335,8 @@ public class GoogleDriveAPI implements FileStorage {
             } catch (IOException e) {
                 e.printStackTrace();
             }
+
+            //TODO: Iskoristiti ovaj kod za prolazak kroz liste
             StringBuilder previousParents = new StringBuilder();
             for (String parent : file.getParents()) {
                 previousParents.append(parent);
@@ -278,6 +357,12 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public void list(String path) {
+
+        //provera da li trenutni korisnik ima privilegiju za citanje
+        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.READ)){
+            throw new InsufficientPrivilegesException();
+        }
+
         String folderID = findID(path);
         String type;
         FileList result = null;
@@ -297,8 +382,7 @@ public class GoogleDriveAPI implements FileStorage {
         } else {
             System.out.println("Files:");
             for (File file : files) {
-                //TODO: proveriti da li izlistava i subfoldere i subfajlove skladista
-                //ne radi subfoldere i fajlove trenutno
+                //ne radi subfoldere i subfajlove trenutno #TODO: Iskoristiti kod iz movea
                 if(!(file.getParents()==null) && file.getParents().contains(folderID)) {
                     Long size;
                     System.out.printf("%s (%s)\n", file.getName(), file.getId());
@@ -316,6 +400,11 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public void list(String path, String argument, Operations operation) {
+        //provera da li trenutni korisnik ima privilegiju za citanje
+        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.READ)){
+            throw new InsufficientPrivilegesException();
+        }
+
         String folderID = findID(path);
         String type;
         FileList result = null;
@@ -333,7 +422,6 @@ public class GoogleDriveAPI implements FileStorage {
         if (files == null || files.isEmpty()) {
             System.out.println("No files found.");
         }
-        // TODO: extenzije srediti
         if (operation == Operations.FILTER_EXTENSION) {
             String extension = argument;
             System.out.println("\nLista fajlova sa datom ekstenzijom u skladistu:");
@@ -447,11 +535,26 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public void put(String destination, String ... sources) {
+        //provera da li trenutni korisnik ima privilegiju za upisivanje
+        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.WRITE)){
+            throw new InsufficientPrivilegesException();
+        }
+
+        //provera za maximalan broj fajlova
+        if(currentStorageModel.getMaxNumberOfFilesInDirectory().containsKey(currentStorageModel.getCurrentStorageName())){
+            int numberOfFiles = currentStorageModel.getCurrNumberOfFiles(); //TODO: samo radi za root, srediti da radi i za fajlove
+            if(numberOfFiles > currentStorageModel.getMaxNumberOfFilesInDirectory().get(getCurrentStorageModel()))
+                throw new FileLimitExceededException();
+        }
 
         String folderId = findID(destination);
         for(String i : sources) {
             String source = i;
             Path original = Paths.get(source);
+            if (checkExtensions(source)) {
+                throw new InvalidExtensionException();
+            }
+            //TODO: provere za SIZE EXCEEDED i za FILE ALREADT EXISTS
             java.io.File temp = new java.io.File(String.valueOf(original));
 
             File fileMetadata = new File();
@@ -480,6 +583,12 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public void get(String ... paths) {
+
+        //provera da li trenutni korisnik ima privilegiju za citanje
+        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.READ)){
+            throw new InsufficientPrivilegesException();
+        }
+
         for(String i : paths) {
             String path = i;
             String fileId = findID(path);
@@ -540,8 +649,7 @@ public class GoogleDriveAPI implements FileStorage {
             e.printStackTrace();
         }
 
-        // TODO: redosled SVIH linija koda
-
+        //TODO: Da li treba napraviti currentDisk kao promenljivu?
         //local storage path kreiranje
         String rootPath = "C:/" + rootName;
         java.io.File storageRoot = new java.io.File(rootPath);
@@ -564,7 +672,9 @@ public class GoogleDriveAPI implements FileStorage {
         // Proveravamo ako vec postoji folder sa ovim imenom koji je skladiste (uz pomoc description taga 'SKLADISTE')
         if(findFile(rootName)) {
             //TODO: popraviti security ili pristup ovoj stavci za SKLADISTE
-            if (getFile(rootName).getDescription().equalsIgnoreCase("SKLADISTE")){
+            if (getFile(rootName).getDescription().equalsIgnoreCase("SKLADISTE") ||
+                    (getFile("config.json").getParents().contains(rootName) &&
+                            getFile("users.json").getParents().contains(rootName))){
                 isStorage = true;
                 currentStorage = rootName;
                 currentStorageID = findID(rootName);
@@ -578,29 +688,35 @@ public class GoogleDriveAPI implements FileStorage {
             String username = scanner.nextLine();
             System.out.println("Password:");
             String password = scanner.nextLine();
-
             ObjectMapper objectMapper = new ObjectMapper();
-            User user = null;
+
+            List<User> users = new ArrayList<>();
             try {
-                user = objectMapper.readValue(new java.io.File(usersLocalPath), User.class);
+                users = Arrays.asList(objectMapper.readValue(new java.io.File(usersLocalPath),User[].class)) /*objectMapper.readValue(new java.io.File(usersLocalPath), User.class)*/;
             } catch (IOException e) {
                 e.printStackTrace();
             }
 
+            boolean found = false;
+            //#TODO: Greske za username i password
             // Provera kredencijala - uporedjivanje prosledjenih username i password-a i procitanih iz users.json fajla
-            if(username.equalsIgnoreCase(user.getUsername()) && password.equalsIgnoreCase(user.getPassword())){
-                try {
-                    // Ako se podaci User-a match-uju, procitaj config, setuj trenutni storage i dodaj skladiste u listu skladista
-                    DriveStorageModel storageModel = objectMapper.readValue(new java.io.File(configLocalPath), DriveStorageModel.class);
-                    this.driveStorageModelList.add(storageModel);
-                    setCurrentStorageModel(storageModel);
-                } catch (IOException e) {
-                    e.printStackTrace();
+            for(User user: users) {
+                if (username.equalsIgnoreCase(user.getUsername()) && password.equalsIgnoreCase(user.getPassword())) {
+                    found = true;
+                    try {
+                        // Ako se podaci User-a match-uju, procitaj config, setuj trenutni storage i dodaj skladiste u listu skladista
+                        DriveStorageModel storageModel = objectMapper.readValue(new java.io.File(configLocalPath), DriveStorageModel.class);
+                        this.driveStorageModelList.add(storageModel);
+                        setCurrentStorageModel(storageModel);
+                        currentStorageModel.setCurrentUser(user);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 }
-            } else {
-                //TODO: throw exception
-                System.out.println("Neispravan username ili password!");
-                return;
+            }
+            //ukoliko je boolean ostao false
+            if(!found) {
+                throw new UserNotFoundException();
             }
             // Pravimo novo skladiste, prilikom kreiranja User-u koji ga je kreirao dodeljujemo sve privilegije
         } else {
@@ -610,8 +726,6 @@ public class GoogleDriveAPI implements FileStorage {
             if(choice.equalsIgnoreCase("DA")){
 
                 createStorage(rootName);
-                currentStorage = rootName;
-                currentStorageID = findID(rootName);
 
                 System.out.println("Unesite username i password kako biste kreirali skladiste.");
                 System.out.println("Username:");
@@ -626,9 +740,9 @@ public class GoogleDriveAPI implements FileStorage {
 //                File usersDrive = new File().setName("users.json");
 //                File configDrive = new File().setName("config.json");
 
-                //pravimo users.json i config.json U LOKALNOM
-                java.io.File usersLocal = new java.io.File(usersLocalPath);
-                java.io.File configLocal = new java.io.File(configLocalPath);
+//                //pravimo users.json i config.json U LOKALNOM
+//                java.io.File usersLocal = new java.io.File(usersLocalPath);
+//                java.io.File configLocal = new java.io.File(configLocalPath);
 
                 DriveStorageModel storageModel = new DriveStorageModel(user, rootName, downloadPath, usersLocalPath, configLocalPath);
                 this.driveStorageModelList.add(storageModel);
@@ -645,34 +759,138 @@ public class GoogleDriveAPI implements FileStorage {
     }
 
     @Override
-    public void limitNumberOfFiles(int i, String s) {
+    public void limitNumberOfFiles(int fileNumberMax, String path) throws InsufficientPrivilegesException, rs.edu.raf.storage.exceptions.FileNotFoundException {
 
+        // Provera da li superuser poziva metodu
+        if(!currentStorageModel.getSuperuser().equals(currentStorageModel.getCurrentUser())){
+            throw new InsufficientPrivilegesException();
+        }
+
+        java.io.File directory = new java.io.File(path);
+
+        // Provera da li postoji prosledjeni folder
+        if(!findFile(path)){
+            throw new rs.edu.raf.storage.exceptions.FileNotFoundException();
+        }
+
+        // Dodavanje novog para direktorijum-brFajlova u HashMap trenutnog skladista
+        currentStorageModel.getMaxNumberOfFilesInDirectory().put(path, Integer.valueOf(fileNumberMax));
+        currentStorageModel.setMaxNumberOfFilesInDirectorySet(true);
+        reuploadJSONS();
     }
+
     @Override
-    public void limitStorageSize(long l) {
+    public void limitStorageSize(long limit) throws InsufficientPrivilegesException{
+
+        //Proveravamo da li superuser poziva metodu
+        if(!currentStorageModel.getSuperuser().equals(currentStorageModel.getCurrentUser())){
+            throw new InsufficientPrivilegesException();
+        }
+
+        currentStorageModel.setStorageSizeLimit(limit);
+        currentStorageModel.setStorageSizeLimit(limit);
+        reuploadJSONS();
+    }
+
+    @Override
+    public void restrictExtension(String extension) throws InsufficientPrivilegesException{
+
+        //Proveravamo da li superuser poziva metodu
+        if(!currentStorageModel.getSuperuser().equals(currentStorageModel.getCurrentUser())){
+            throw new InsufficientPrivilegesException();
+        }
+
+        currentStorageModel.getUnsupportedExtensions().add(extension);
+        reuploadJSONS();
 
     }
 
     @Override
-    public void restrictExtension(String s) {
+    public void addNewUser(User user, Set<Privileges> privileges) throws InsufficientPrivilegesException, UserAlreadyExistsException {
+        //Proveravamo da li superuser poziva metodu
+        if(!currentStorageModel.getSuperuser().equals(currentStorageModel.getCurrentUser())){
+            throw new InsufficientPrivilegesException();
+        }
 
+        //proveravamo da li korisnik vec postoji
+        if(currentStorageModel.getUserList().contains(user)){
+            throw new UserAlreadyExistsException();
+        }
+
+        user.setPrivileges(privileges);
+        currentStorageModel.getUserList().add(user);
+        reuploadJSONS();
+    }
+
+
+    @Override
+    public void removeUser(User user) throws UserNotFoundException, InsufficientPrivilegesException {
+        //Proveravamo da li superuser poziva metodu
+        if(!currentStorageModel.getSuperuser().equals(currentStorageModel.getCurrentUser())){
+            throw new InsufficientPrivilegesException();
+        }
+
+        //Proveravamo da li postoji odabrani user za brisanje
+        boolean userFound = false;
+        User targetUser = null;
+        for(User u : currentStorageModel.getUserList()){
+            if(u.getUsername().equalsIgnoreCase(user.getUsername())){
+                userFound = true;
+            }
+        }
+
+        if(userFound){
+            currentStorageModel.getUserList().remove(targetUser);
+            reuploadJSONS();
+        } else{
+            throw new UserNotFoundException();
+        }
+    }
+
+    //TODO: Adaptirano ali treba testirati
+    @Override
+    public void login(User user) throws UserAlreadyLoggedInException{
+
+        User connectingUser = null;
+
+        for(User u : currentStorageModel.getUserList()){
+            if(u.equals(user)){
+                connectingUser = u;
+            }
+        }
+
+        if(currentStorageModel.getCurrentUser().equals(connectingUser))
+            throw new UserAlreadyLoggedInException();
+
+        currentStorageModel.setCurrentUser(connectingUser);
+        reuploadJSONS();
     }
 
     @Override
-    public void addNewUser(User User, Set<Privileges> set) {
+    public void logout(User user) throws UserNotFoundException, UserLogoutException {
+        User disconnectingUser = null;
 
+        for(User u : currentStorageModel.getUserList()){
+            if(u.equals(disconnectingUser)){
+                disconnectingUser = u;
+            }
+        }
+
+        if(disconnectingUser==null)
+            throw new UserNotFoundException();
+
+        if(!currentStorageModel.getCurrentUser().equals(disconnectingUser))
+            throw new UserLogoutException();
+
+        currentStorageModel.setCurrentUser(null);
+        reuploadJSONS();
     }
-
-
-    @Override
-    public void disconnectUser(User User) {
-
-    }
-
 
 
     //POMOCNE METODE
     private void createStorage(String folderName) {
+        currentStorage = folderName;
+        currentStorageID = findID(folderName);
         File fileMetadata = new File();
         fileMetadata.setName(folderName);
         fileMetadata.setMimeType("application/vnd.google-apps.folder");
@@ -754,11 +972,10 @@ public class GoogleDriveAPI implements FileStorage {
     }
 
     private void reuploadJSONS() {
-        getCurrentStorageModel().updateConfig();
         //TODO videti kada treba users fajl updateovati
-        //getCurrentStorageModel().updateUsers();
-        //,getCurrentStorageModel().getUsersJSON()
-        reupload(currentStorage, getCurrentStorageModel().getConfigJSON());
+        getCurrentStorageModel().updateConfig();
+        getCurrentStorageModel().updateUsers();
+        reupload(currentStorage, getCurrentStorageModel().getConfigJSON(), getCurrentStorageModel().getUsersJSON());
     }
 
     private void reupload(String destination, String ... sources) {
@@ -804,6 +1021,16 @@ public class GoogleDriveAPI implements FileStorage {
             getCurrentStorageModel().setCurrNumberOfFiles(filecount + 1);
             System.out.println("File reuploaded into Google Drive Storage - File ID: " + file.getId());
         }
+    }
+
+    // Pomocna metoda za proveravanje ekstenzije prilikom dodavanja fajla u skladiste
+    private boolean checkExtensions(String filename){
+        boolean found = false;
+        for(String extension: currentStorageModel.getUnsupportedExtensions()){
+            if(filename.endsWith(extension))
+                found = true;
+        }
+        return found;
     }
 
 
