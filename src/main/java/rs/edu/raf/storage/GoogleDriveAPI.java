@@ -113,13 +113,12 @@ public class GoogleDriveAPI implements FileStorage {
 
 
     // IMPLEMENTACIJA METODA IZ FILE STORAGE-A
-    //TODO: Dodati checkove za MaxFile, MaxSize, currNumber, generalno za provere oko memorije i kolicine fajlova
     //TODO: Dodati exceptione i rad sa njima u vezi sa metodama iz specifikacije
 
     @Override
     public void createFolder(String path, String ... folderNames) throws InsufficientPrivilegesException, rs.edu.raf.storage.exceptions.FileNotFoundException {
         //provera da li trenutni korisnik ima privilegiju za kreiranje
-        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.WRITE)){
+        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.CREATE)){
             throw new InsufficientPrivilegesException();
         }
 
@@ -154,7 +153,7 @@ public class GoogleDriveAPI implements FileStorage {
     public void createFile(String path, String ... filenames) throws InvalidExtensionException, InsufficientPrivilegesException, rs.edu.raf.storage.exceptions.FileNotFoundException, FileLimitExceededException {
 
         //provera da li trenutni korisnik ima privilegiju za kreiranje
-        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.WRITE)){
+        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.CREATE)){
             throw new InsufficientPrivilegesException();
         }
 
@@ -204,7 +203,7 @@ public class GoogleDriveAPI implements FileStorage {
     public void createFolder(String folderName) throws InsufficientPrivilegesException{
 
         //provera da li trenutni korisnik ima privilegiju za kreiranje
-        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.WRITE)){
+        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.CREATE)){
             throw new InsufficientPrivilegesException();
         }
 
@@ -231,7 +230,7 @@ public class GoogleDriveAPI implements FileStorage {
     public void createFile(String filename) throws InvalidExtensionException, InsufficientPrivilegesException, FileLimitExceededException{
 
         //provera da li trenutni korisnik ima privilegiju za kreiranje
-        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.WRITE)){
+        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.CREATE)){
             throw new InsufficientPrivilegesException();
         }
 
@@ -307,7 +306,7 @@ public class GoogleDriveAPI implements FileStorage {
     @Override
     public void move(String destination, String ... sources) throws InsufficientPrivilegesException, rs.edu.raf.storage.exceptions.FileNotFoundException, FileLimitExceededException, StorageSizeExceededException, InvalidExtensionException {
         //provera da li trenutni korisnik ima privilegiju za kreiranje
-        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.WRITE)){
+        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.CREATE)){
             throw new InsufficientPrivilegesException();
         }
 
@@ -374,13 +373,14 @@ public class GoogleDriveAPI implements FileStorage {
     public void list(String path) throws InsufficientPrivilegesException, rs.edu.raf.storage.exceptions.FileNotFoundException {
 
         //provera da li trenutni korisnik ima privilegiju za citanje
-        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.READ)){
+        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.VIEW)){
             throw new InsufficientPrivilegesException();
         }
 
         String folderID = findID(path);
         String type;
         FileList result = null;
+
 
         if(folderID == null){
             System.out.println("Nije pronadjena lokacija odakle zelite da izlistate fajlove");
@@ -404,6 +404,7 @@ public class GoogleDriveAPI implements FileStorage {
             System.out.println("Files:");
             for (File file : files) {
                 //ne radi subfoldere i subfajlove trenutno #TODO: Iskoristiti kod iz movea
+
                 if(!(file.getParents()==null) && file.getParents().contains(folderID)) {
                     Long size;
                     System.out.printf("%s (%s)\n", file.getName(), file.getId());
@@ -422,7 +423,7 @@ public class GoogleDriveAPI implements FileStorage {
     @Override
     public void list(String path, String argument, Operations operation) throws InsufficientPrivilegesException, rs.edu.raf.storage.exceptions.FileNotFoundException {
         //provera da li trenutni korisnik ima privilegiju za citanje
-        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.READ)){
+        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.VIEW)){
             throw new InsufficientPrivilegesException();
         }
 
@@ -563,7 +564,7 @@ public class GoogleDriveAPI implements FileStorage {
     @Override
     public void put(String destination, String ... sources) throws InsufficientPrivilegesException, InvalidExtensionException, FileLimitExceededException, StorageSizeExceededException, FileAlreadyInStorageException{
         //provera da li trenutni korisnik ima privilegiju za upisivanje
-        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.WRITE)){
+        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.CREATE)){
             throw new InsufficientPrivilegesException();
         }
 
@@ -623,7 +624,7 @@ public class GoogleDriveAPI implements FileStorage {
     public void get(String ... paths) throws InsufficientPrivilegesException, rs.edu.raf.storage.exceptions.FileNotFoundException {
 
         //provera da li trenutni korisnik ima privilegiju za citanje
-        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.READ)){
+        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.DOWNLOAD)){
             throw new InsufficientPrivilegesException();
         }
 
@@ -741,7 +742,6 @@ public class GoogleDriveAPI implements FileStorage {
             }
 
             boolean found = false;
-            //#TODO: Greske za username i password
             // Provera kredencijala - uporedjivanje prosledjenih username i password-a i procitanih iz users.json fajla
             for(User user: users) {
                 if (username.equalsIgnoreCase(user.getUsername()) && password.equalsIgnoreCase(user.getPassword())) {
@@ -769,6 +769,7 @@ public class GoogleDriveAPI implements FileStorage {
             if(choice.equalsIgnoreCase("DA")){
 
                 createStorage(rootName);
+                String rootID = findID(rootName);
 
                 System.out.println("Unesite username i password kako biste kreirali skladiste.");
                 System.out.println("Username:");
@@ -787,7 +788,7 @@ public class GoogleDriveAPI implements FileStorage {
 //                java.io.File usersLocal = new java.io.File(usersLocalPath);
 //                java.io.File configLocal = new java.io.File(configLocalPath);
 
-                DriveStorageModel storageModel = new DriveStorageModel(user, rootName, downloadPath, usersLocalPath, configLocalPath);
+                DriveStorageModel storageModel = new DriveStorageModel(user, rootName, rootID , downloadPath, usersLocalPath, configLocalPath);
                 this.driveStorageModelList.add(storageModel);
                 setCurrentStorageModel(storageModel);
                 put(rootName, usersLocalPath, configLocalPath);
@@ -1019,7 +1020,6 @@ public class GoogleDriveAPI implements FileStorage {
     }
 
     private void reuploadJSONS() {
-        //TODO videti kada treba users fajl updateovati
         getCurrentStorageModel().updateConfig();
         getCurrentStorageModel().updateUsers();
         reupload(currentStorage, getCurrentStorageModel().getConfigJSON(), getCurrentStorageModel().getUsersJSON());

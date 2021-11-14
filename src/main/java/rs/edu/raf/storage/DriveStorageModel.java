@@ -12,12 +12,11 @@ import java.util.Map;
 
 public class DriveStorageModel {
 
-    //TODO: DODAJ POLJE storageID !!!!!
-
     private String usersJSON;
     private String configJSON;
     private String downloadFolder;
     private String currentStorageName;
+    private String currentStorageID;
     private User superuser;
     private User currentUser;
     private long storageSizeLimit;
@@ -32,11 +31,12 @@ public class DriveStorageModel {
 
     }
 
-    public DriveStorageModel(User user, String storageName, String downloadFolder, String usersPath, String configPath) {
+    public DriveStorageModel(User user, String storageName,String storageID, String downloadFolder, String usersPath, String configPath) {
 
         // Inicijalizacija parametara:
         this.currNumberOfFiles = 0;
         this.currentStorageName = storageName;
+        this.currentStorageID = storageID;
         this.downloadFolder = downloadFolder;
         this.superuser = user;
         this.currentUser = user;
@@ -112,6 +112,14 @@ public class DriveStorageModel {
 
     public void setDownloadFolder(String downloadFolder) {
         this.downloadFolder = downloadFolder;
+    }
+
+    public String getCurrentStorageID() {
+        return currentStorageID;
+    }
+
+    public void setCurrentStorageID(String currentStorageID) {
+        this.currentStorageID = currentStorageID;
     }
 
     public User getCurrentUser() {
