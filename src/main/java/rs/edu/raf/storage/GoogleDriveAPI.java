@@ -364,11 +364,17 @@ public class GoogleDriveAPI implements FileStorage {
                 file = service.files().update(fileId, null)
                         .setAddParents(folderId)
                         .setRemoveParents(previousParents.toString())
-                        .setFields("id, parents")
+                        .setFields("id, parents, mimeType")
                         .execute();
             } catch (IOException e) {
                 e.printStackTrace();
-            }
+            }/*
+            if(getFile(source).getMimeType().equals("application/vnd.google-apps.folder")){
+                Collection<String> subs = list(source, true);
+                for (String s: subs){
+                    move(source, s);
+                }
+            }*/
         }
     }
 
