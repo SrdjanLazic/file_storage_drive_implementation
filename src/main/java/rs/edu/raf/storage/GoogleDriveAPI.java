@@ -563,7 +563,11 @@ public class GoogleDriveAPI implements FileStorage {
                     }
                 }
             }
-            globalFilterList.sort(new FileNameComparator());
+            if(order.equalsIgnoreCase(" rastuce ")) {
+                globalFilterList.sort(new FileNameComparator());
+            }else{
+                globalFilterList.sort(new FileNameComparator().reversed());
+            }
         } else if (operation == Operations.SORT_BY_DATE_MODIFIED_ASC || operation == Operations.SORT_BY_DATE_MODIFIED_DESC) {
             String order;
             if (operation == Operations.SORT_BY_DATE_MODIFIED_ASC) {
@@ -619,7 +623,11 @@ public class GoogleDriveAPI implements FileStorage {
                     }
                 }
             }
-            globalFilterList.sort(new FileModifiedDateComparator());
+            if(order.equalsIgnoreCase(" rastuce ")) {
+                globalFilterList.sort(new FileModifiedDateComparator());
+            }else {
+                globalFilterList.sort(new FileModifiedDateComparator().reversed());
+            }
         } else if (operation == Operations.SORT_BY_DATE_CREATED) {
             files.sort(new FileDateCreatedComparator());
             //SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
