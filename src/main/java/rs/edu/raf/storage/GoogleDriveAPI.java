@@ -42,7 +42,7 @@ public class GoogleDriveAPI implements FileStorage {
     private List<DriveStorageModel> driveStorageModelList = new ArrayList<>();
     private Drive service;
     private static Collection<String> globalList = new ArrayList<>();
-    private static Collection<File> globalFilterList = new ArrayList<>();
+    private static List<File> globalFilterList = new ArrayList<>();
 
 
     /**
@@ -563,6 +563,7 @@ public class GoogleDriveAPI implements FileStorage {
                     }
                 }
             }
+            globalFilterList.sort(new FileNameComparator());
         } else if (operation == Operations.SORT_BY_DATE_MODIFIED_ASC || operation == Operations.SORT_BY_DATE_MODIFIED_DESC) {
             String order;
             if (operation == Operations.SORT_BY_DATE_MODIFIED_ASC) {
@@ -618,6 +619,7 @@ public class GoogleDriveAPI implements FileStorage {
                     }
                 }
             }
+            globalFilterList.sort(new FileModifiedDateComparator());
         } else if (operation == Operations.SORT_BY_DATE_CREATED) {
             files.sort(new FileDateCreatedComparator());
             //SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
@@ -644,6 +646,7 @@ public class GoogleDriveAPI implements FileStorage {
                     }
                 }
             }
+            globalFilterList.sort(new FileDateCreatedComparator());
         }
         for(File f : globalFilterList){
             globalList.add(f.getName());
