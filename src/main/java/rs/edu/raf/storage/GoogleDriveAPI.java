@@ -19,6 +19,9 @@ import com.google.api.services.drive.model.FileList;
 import rs.edu.raf.storage.enums.Operations;
 import rs.edu.raf.storage.enums.Privileges;
 import rs.edu.raf.storage.exceptions.*;
+import rs.edu.raf.storage.storage_management.FileStorage;
+import rs.edu.raf.storage.storage_management.StorageManager;
+import rs.edu.raf.storage.user_management.User;
 
 import java.io.*;
 import java.io.FileNotFoundException;
@@ -116,7 +119,6 @@ public class GoogleDriveAPI implements FileStorage {
 
 
     // IMPLEMENTACIJA METODA IZ FILE STORAGE-A
-    //TODO: Dodati exceptione i rad sa njima u vezi sa metodama iz specifikacije
 
     @Override
     public void createFolder(String path, String ... folderNames) throws InsufficientPrivilegesException, rs.edu.raf.storage.exceptions.FileNotFoundException {
@@ -160,21 +162,22 @@ public class GoogleDriveAPI implements FileStorage {
             throw new InsufficientPrivilegesException();
         }
 
-
         String folderId = findID(path);
         if(folderId == null){
             System.out.println("Nije pronadjena lokacija gde zelite napraviti fajl");
             throw new rs.edu.raf.storage.exceptions.FileNotFoundException();
         }
+
+        // Provera da li cemo prekoraciti broj fajlova u nekom folderu:
+        // Prvo proverava da li u HashMap-u postoji folder u kojem se kreira novi fajl
+        // Ako postoji, proverava da li (trenutni broj fajlova u tom folderu + 1) prekoracuje maksimalan definisani iz HashMap-a
+        if(currentStorageModel.getMaxNumberOfFilesInDirectory().containsKey(path)){
+            int numberOfFiles = list(path, true).size();
+            System.out.println("numberOfFiles in destination folder is " + numberOfFiles);//TODO: samo radi za root, srediti da radi i za fajlove
+            if(numberOfFiles + filenames.length > currentStorageModel.getMaxNumberOfFilesInDirectory().get(path))
+                throw new FileLimitExceededException();
+        }
         for(String i : filenames) {
-            // Provera da li cemo prekoraciti broj fajlova u nekom folderu:
-            // Prvo proverava da li u HashMap-u postoji folder u kojem se kreira novi fajl
-            // Ako postoji, proverava da li (trenutni broj fajlova u tom folderu + 1) prekoracuje maksimalan definisani iz HashMap-a
-            if(currentStorageModel.getMaxNumberOfFilesInDirectory().containsKey(currentStorageModel.getCurrentStorageName())){
-                int numberOfFiles = currentStorageModel.getCurrNumberOfFiles(); //TODO: samo radi za root, srediti da radi i za fajlove
-                if(numberOfFiles + 1 > currentStorageModel.getMaxNumberOfFilesInDirectory().get(getCurrentStorageModel()))
-                    throw new FileLimitExceededException();
-            }
 
             if(checkExtensions(i)){
                 throw new InvalidExtensionException();
@@ -245,7 +248,7 @@ public class GoogleDriveAPI implements FileStorage {
         // Prvo proverava da li u HashMap-u postoji folder u kojem se kreira novi fajl
         // Ako postoji, proverava da li (trenutni broj fajlova u tom folderu + 1) prekoracuje maksimalan definisani iz HashMap-a
         if(currentStorageModel.getMaxNumberOfFilesInDirectory().containsKey(currentStorageModel.getCurrentStorageName())){
-            int numberOfFiles = currentStorageModel.getCurrNumberOfFiles(); //TODO: samo radi za root, srediti da radi i za fajlove
+            int numberOfFiles = currentStorageModel.getCurrNumberOfFiles();
             if(numberOfFiles + 1> currentStorageModel.getMaxNumberOfFilesInDirectory().get(getCurrentStorageModel()))
                 throw new FileLimitExceededException();
         }
@@ -283,7 +286,6 @@ public class GoogleDriveAPI implements FileStorage {
             if(fileId == null)
                 throw new rs.edu.raf.storage.exceptions.FileNotFoundException();
 
-            //TODO: Exceptione za ova dva if-a
             if(!currentStorageModel.getCurrentUser().equals(currentStorageModel.getSuperuser()) && path.contentEquals("users.json") || path.contentEquals("config.json")){
                 System.out.println("Nije moguce obrisati users.json i config.json fajlove");
                 throw new InsufficientPrivilegesException();
@@ -319,17 +321,18 @@ public class GoogleDriveAPI implements FileStorage {
             throw new rs.edu.raf.storage.exceptions.FileNotFoundException();
         }
 
+        //provera za maximalan broj fajlova
+        if(currentStorageModel.getMaxNumberOfFilesInDirectory().containsKey(destination)){
+            int numberOfFiles = list(destination, true).size();
+            System.out.println("number of files is " + numberOfFiles);//TODO: samo radi za root, srediti da radi i za fajlove
+            if(numberOfFiles + sources.length > currentStorageModel.getMaxNumberOfFilesInDirectory().get(destination))
+                throw new FileLimitExceededException();
+        }
 
         for(String i : sources) {
             String source = i;
             String fileId = findID(source);
 
-            //provera za maximalan broj fajlova
-            if(currentStorageModel.getMaxNumberOfFilesInDirectory().containsKey(currentStorageModel.getCurrentStorageName())){
-                int numberOfFiles = currentStorageModel.getCurrNumberOfFiles(); //TODO: samo radi za root, srediti da radi i za fajlove
-                if(numberOfFiles + 1 > currentStorageModel.getMaxNumberOfFilesInDirectory().get(getCurrentStorageModel()))
-                    throw new FileLimitExceededException();
-            }
 
             if(fileId == null){
                 System.out.println("Nije pronadjen fajl koji zelite da prebacite");
@@ -339,9 +342,6 @@ public class GoogleDriveAPI implements FileStorage {
             if(checkExtensions(source)){
                 throw new InvalidExtensionException();
             }
-
-            //provera za storage size nije moguca na driveu
-            //TODO: saberi size svih fajlova i podfajlova u storageu za storage size
 
             // Retrieve the existing parents to remove
             File file = null;
@@ -353,7 +353,6 @@ public class GoogleDriveAPI implements FileStorage {
                 e.printStackTrace();
             }
 
-            //TODO: Iskoristiti ovaj kod za prolazak kroz liste
             StringBuilder previousParents = new StringBuilder();
             for (String parent : file.getParents()) {
                 previousParents.append(parent);
@@ -414,8 +413,6 @@ public class GoogleDriveAPI implements FileStorage {
         } else {
             System.out.println("Files:");
             for (File file : files) {
-                //ne radi subfoldere i subfajlove trenutno #TODO: Iskoristiti kod iz movea
-
                 if(!(file.getParents()==null) && file.getParents().contains(folderID)) {
                     Long size;
                     String name = file.getName();
@@ -677,15 +674,16 @@ public class GoogleDriveAPI implements FileStorage {
             throw new InsufficientPrivilegesException();
         }
 
+        //provera za maximalan broj fajlova
+        if(currentStorageModel.getMaxNumberOfFilesInDirectory().containsKey(destination)){
+            int numberOfFiles = list(destination, true).size();
+            System.out.println("broj fajlova : " + numberOfFiles);//TODO: samo radi za root, srediti da radi i za fajlove
+            if(numberOfFiles + sources.length > currentStorageModel.getMaxNumberOfFilesInDirectory().get(destination))
+                throw new FileLimitExceededException();
+        }
 
         String folderId = findID(destination);
         for(String i : sources) {
-            //provera za maximalan broj fajlova
-            if(currentStorageModel.getMaxNumberOfFilesInDirectory().containsKey(currentStorageModel.getCurrentStorageName())){
-                int numberOfFiles = currentStorageModel.getCurrNumberOfFiles(); //TODO: samo radi za root, srediti da radi i za fajlove
-                if(numberOfFiles > currentStorageModel.getMaxNumberOfFilesInDirectory().get(getCurrentStorageModel()))
-                    throw new FileLimitExceededException();
-            }
 
             String source = i;
             Path original = Paths.get(source);
@@ -696,13 +694,18 @@ public class GoogleDriveAPI implements FileStorage {
             if(findFile(source))
                 throw new FileAlreadyInStorageException();
 
-            //TODO: provere za SIZE EXCEEDED
-            try{
-                long size = Files.size(original);
-                //if(currentStorageModel.getCurrent)
-            } catch (IOException e){
-
+            //TODO: provere za SIZE EXCEEDED - srediti taj try catch nekako
+            if(currentStorageModel.isStorageSizeLimitSet()) {
+                try {
+                    long size = Files.size(original);
+                    if (currentStorageModel.getCurrentStorageSize() + size > currentStorageModel.getStorageSizeLimit()) {
+                        throw new StorageSizeExceededException();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
+
             java.io.File temp = new java.io.File(String.valueOf(original));
 
             File fileMetadata = new File();
@@ -794,19 +797,20 @@ public class GoogleDriveAPI implements FileStorage {
 
 
 
-    //Inicijalizovanje remote storagea na google driveu
+    //Inicijalizovanje remote storagea na google driveu - ispisati celu putanju gde ce biti i download folder
     @Override
-    public void initializeStorage(String rootName) {
+    public void initializeStorage(String rootPath) {
         try {
             this.service = getDriveService();
         } catch (IOException e) {
             e.printStackTrace();
         }
 
-        //TODO: Da li treba napraviti currentDisk kao promenljivu?
         //local storage path kreiranje
-        String rootPath = "C:/" + rootName;
         java.io.File storageRoot = new java.io.File(rootPath);
+        System.out.println(storageRoot.getName().substring(storageRoot.getName().lastIndexOf("/")+1));
+        String rootName = storageRoot.getName().substring(storageRoot.getName().lastIndexOf("/")+1);
+        System.out.println(rootName);
         if(!storageRoot.exists())
             storageRoot.mkdir();
 
@@ -826,9 +830,9 @@ public class GoogleDriveAPI implements FileStorage {
         // Proveravamo ako vec postoji folder sa ovim imenom koji je skladiste (uz pomoc description taga 'SKLADISTE')
         if(findFile(rootName)) {
             //TODO: popraviti security ili pristup ovoj stavci za SKLADISTE
-            if (getFile(rootName).getDescription().equalsIgnoreCase("SKLADISTE") ||
-                    (getFile("config.json").getParents().contains(rootName) &&
-                            getFile("users.json").getParents().contains(rootName))){
+            if (getFile(rootName).getDescription().equalsIgnoreCase("SKLADISTE") &&
+                (getFile("config.json").getParents().contains(rootName) &&
+                    getFile("users.json").getParents().contains(rootName))){
                 isStorage = true;
                 currentStorage = rootName;
                 currentStorageID = findID(rootName);
@@ -956,6 +960,27 @@ public class GoogleDriveAPI implements FileStorage {
         currentStorageModel.getUnsupportedExtensions().add(extension);
         reuploadJSONS();
 
+    }
+
+    @Override
+    public void setFolderPrivileges(String folderName, Set<Privileges> privileges) {
+        //Proveravamo da li superuser poziva metodu
+        if(!currentStorageModel.getSuperuser().equals(currentStorageModel.getCurrentUser())){
+            throw new InsufficientPrivilegesException();
+        }
+
+        Set<Privileges> privilegesToAdd = new HashSet<>();
+
+        if(privileges.contains(Privileges.DELETE))
+            privilegesToAdd.addAll(List.of(Privileges.DELETE, Privileges.CREATE, Privileges.DOWNLOAD, Privileges.VIEW));
+        else if(privileges.contains(Privileges.CREATE))
+            privilegesToAdd.addAll(List.of(Privileges.CREATE, Privileges.DOWNLOAD, Privileges.VIEW));
+        else if(privileges.contains(Privileges.DOWNLOAD))
+            privilegesToAdd.addAll(List.of(Privileges.DOWNLOAD, Privileges.VIEW));
+        else if(privileges.contains(Privileges.VIEW))
+            privilegesToAdd.add((Privileges.VIEW));
+
+        currentStorageModel.getFolderPrivileges().put(folderName, privilegesToAdd);
     }
 
     @Override

@@ -1,13 +1,12 @@
 package rs.edu.raf.storage;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import rs.edu.raf.storage.enums.Privileges;
+import rs.edu.raf.storage.user_management.User;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 
 public class DriveStorageModel {
@@ -19,10 +18,13 @@ public class DriveStorageModel {
     private String currentStorageID;
     private User superuser;
     private User currentUser;
+    private long currentStorageSize;
     private long storageSizeLimit;
+    private boolean storageSizeLimitSet = false;
     private int currNumberOfFiles;
     private boolean maxNumberOfFilesInDirectorySet = false;
     private Map<String, Integer> maxNumberOfFilesInDirectory = new HashMap<>();
+    private Map<String, Set<Privileges>> folderPrivileges= new HashMap<>();
     private List<User> userList = new ArrayList<>();
     private List<String> unsupportedExtensions = new ArrayList<>();
     private transient ObjectMapper mapper = new ObjectMapper();
@@ -31,7 +33,7 @@ public class DriveStorageModel {
 
     }
 
-    public DriveStorageModel(User user, String storageName,String storageID, String downloadFolder, String usersPath, String configPath) {
+    public DriveStorageModel(User user, String storageName, String storageID, String downloadFolder, String usersPath, String configPath) {
 
         // Inicijalizacija parametara:
         this.currNumberOfFiles = 0;
@@ -101,11 +103,6 @@ public class DriveStorageModel {
         this.currNumberOfFiles = currNumberOfFiles;
     }
 
-    public void incrementCounter(){
-        this.currNumberOfFiles++;
-        updateConfig();
-    }
-
     public String getDownloadFolder() {
         return downloadFolder;
     }
@@ -164,6 +161,7 @@ public class DriveStorageModel {
                 ", superuser=" + superuser +
                 ", currentUser=" + currentUser +
                 ", storageSize=" + storageSizeLimit +
+                ", currentStorageSize=" + currentStorageSize +
                 ", userList=" + userList +
                 ", unsupportedExtensions=" + unsupportedExtensions +
                 ", maxNumberOfFilesInDirectory=" + maxNumberOfFilesInDirectory +
@@ -193,5 +191,29 @@ public class DriveStorageModel {
 
     public void setConfigJSON(String configJSON) {
         this.configJSON = configJSON;
+    }
+
+    public Map<String, Set<Privileges>> getFolderPrivileges(){
+        return folderPrivileges;
+    }
+
+    public void setFolderPrivileges(Map<String, Set<Privileges>> folderPrivileges){
+        this.folderPrivileges = folderPrivileges;
+    }
+
+    public long getCurrentStorageSize() {
+        return currentStorageSize;
+    }
+
+    public void setCurrentStorageSize(long currentStorageSize) {
+        this.currentStorageSize = currentStorageSize;
+    }
+
+    public boolean isStorageSizeLimitSet() {
+        return storageSizeLimitSet;
+    }
+
+    public void setStorageSizeLimitSet(boolean storageSizeLimitSet) {
+        this.storageSizeLimitSet = storageSizeLimitSet;
     }
 }
