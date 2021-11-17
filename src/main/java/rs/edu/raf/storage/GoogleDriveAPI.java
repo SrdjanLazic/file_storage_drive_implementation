@@ -122,9 +122,22 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public void createFolder(String path, String ... folderNames) throws InsufficientPrivilegesException, rs.edu.raf.storage.exceptions.FileNotFoundException {
+
+        // Provera da li imamo ulogovanog korisnika
+        if(currentStorageModel.getCurrentUser() == null)
+            throw new CurrentUserIsNullException();
+
         //provera da li trenutni korisnik ima privilegiju za kreiranje
-        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.CREATE)){
-            throw new InsufficientPrivilegesException();
+        if (!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.CREATE)) {
+            throw new InsufficientPrivilegesException("Greska! User nema potrebne privilegije");
+        }
+
+        //TODO popraviti ovaj check
+        //provera da li trenutni korisnik ima privilegiju za kreiranje na nivou zadate putanje
+        if(currentStorageModel.getFolderPrivileges().containsKey(path)) {
+            if (!currentStorageModel.getFolderPrivileges().get(path).contains(Privileges.CREATE)) {
+                throw new InsufficientPrivilegesException("Greska! Folder ne dozvoljava datu privilegiju");
+            }
         }
 
         String folderId = findID(path);
@@ -157,9 +170,17 @@ public class GoogleDriveAPI implements FileStorage {
     @Override
     public void createFile(String path, String ... filenames) throws InvalidExtensionException, InsufficientPrivilegesException, rs.edu.raf.storage.exceptions.FileNotFoundException, FileLimitExceededException {
 
-        //provera da li trenutni korisnik ima privilegiju za kreiranje
-        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.CREATE)){
-            throw new InsufficientPrivilegesException();
+        // Provera da li imamo ulogovanog korisnika
+        if(currentStorageModel.getCurrentUser() == null)
+            throw new CurrentUserIsNullException();
+
+        if (!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.CREATE)) {
+            throw new InsufficientPrivilegesException("Greska! Korisnik nema potrebne privilegije.");
+        }
+
+        //provera da li trenutni korisnik ima privilegiju za kreiranje na zadatoj putanji TODO srediti ovo
+        if(currentStorageModel.getFolderPrivileges().containsKey(path)) {
+
         }
 
         String folderId = findID(path);
@@ -208,10 +229,15 @@ public class GoogleDriveAPI implements FileStorage {
     @Override
     public void createFolder(String folderName) throws InsufficientPrivilegesException{
 
-        //provera da li trenutni korisnik ima privilegiju za kreiranje
-        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.CREATE)){
-            throw new InsufficientPrivilegesException();
+        // Provera da li imamo ulogovanog korisnika
+        if(currentStorageModel.getCurrentUser() == null)
+            throw new CurrentUserIsNullException();
+
+        //provera da li trenutni korisnik ima privilegiju za kreiranje na skladistu
+        if (!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.CREATE)) {
+            throw new InsufficientPrivilegesException("Greska! Korisnik nema potrebne privilegije.");
         }
+
 
         File fileMetadata = new File();
         fileMetadata.setName(folderName);
@@ -235,10 +261,15 @@ public class GoogleDriveAPI implements FileStorage {
     @Override
     public void createFile(String filename) throws InvalidExtensionException, InsufficientPrivilegesException, FileLimitExceededException{
 
-        //provera da li trenutni korisnik ima privilegiju za kreiranje
-        if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.CREATE)){
-            throw new InsufficientPrivilegesException();
+        // Provera da li imamo ulogovanog korisnika
+        if(currentStorageModel.getCurrentUser() == null)
+            throw new CurrentUserIsNullException();
+
+        //provera da li trenutni korisnik ima privilegiju za kreiranje na skladistu
+        if (!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.CREATE)) {
+            throw new InsufficientPrivilegesException("Greska! Korisnik nema potrebne privilegije.");
         }
+
 
         if(checkExtensions(filename)){
             throw new InvalidExtensionException();
@@ -271,8 +302,13 @@ public class GoogleDriveAPI implements FileStorage {
         reuploadJSONS();
     }
 
+    //TODO: brisanje foldera i svega u njima
     @Override
     public void delete(String ... paths) throws InsufficientPrivilegesException, rs.edu.raf.storage.exceptions.FileNotFoundException, FileDeleteFailedException{
+
+        // Provera da li imamo ulogovanog korisnika
+        if(currentStorageModel.getCurrentUser() == null)
+            throw new CurrentUserIsNullException();
 
         //provera da li trenutni korisnik ima privilegiju za brisanje
         if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.DELETE)){
@@ -286,13 +322,18 @@ public class GoogleDriveAPI implements FileStorage {
             if(fileId == null)
                 throw new rs.edu.raf.storage.exceptions.FileNotFoundException();
 
-            if(!currentStorageModel.getCurrentUser().equals(currentStorageModel.getSuperuser()) && path.contentEquals("users.json") || path.contentEquals("config.json")){
-                System.out.println("Nije moguce obrisati users.json i config.json fajlove");
-                throw new InsufficientPrivilegesException();
+            //provera da li trenutni korisnik ima privilegiju za brisanje na nivou foldera TODO srediti i ovo
+            if(currentStorageModel.getFolderPrivileges().containsKey(path)) {
+                if (!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.DELETE)) {
+                    throw new InsufficientPrivilegesException();
+                }
             }
-            else if (!currentStorageModel.getCurrentUser().equals(currentStorageModel.getSuperuser()) && getFile(path).getName().contentEquals(currentStorage)) {
-                System.out.println("Nije moguce obrisati skladiste, vec samo fajlove i direktorijume unutar njega.");
-                throw new InsufficientPrivilegesException();
+
+            if(!(currentStorageModel.getCurrentUser().equals(currentStorageModel.getSuperuser())) && (path.contentEquals("users.json") || path.contentEquals("config.json"))){
+                throw new InsufficientPrivilegesException("Nije moguce obrisati users.json i config.json fajlove");
+            }
+            else if (!(currentStorageModel.getCurrentUser().equals(currentStorageModel.getSuperuser())) && getFile(path).getName().contentEquals(currentStorage)) {
+                throw new InsufficientPrivilegesException("Nije moguce obrisati skladiste, vec samo fajlove i direktorijume unutar njega.");
             }
             else {
                 try {
@@ -310,6 +351,11 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public void move(String destination, String ... sources) throws InsufficientPrivilegesException, rs.edu.raf.storage.exceptions.FileNotFoundException, FileLimitExceededException, StorageSizeExceededException, InvalidExtensionException {
+
+        // Provera da li imamo ulogovanog korisnika
+        if(currentStorageModel.getCurrentUser() == null)
+            throw new CurrentUserIsNullException();
+
         //provera da li trenutni korisnik ima privilegiju za kreiranje
         if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.CREATE)){
             throw new InsufficientPrivilegesException();
@@ -332,6 +378,13 @@ public class GoogleDriveAPI implements FileStorage {
         for(String i : sources) {
             String source = i;
             String fileId = findID(source);
+
+            //provera da li trenutni korisnik ima privilegiju za preuzimanje sa foldera za pomeranje na drugi TODO srediti i ovo
+            if(currentStorageModel.getFolderPrivileges().containsKey(getFile(source).getParents())) {
+                if (!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.DOWNLOAD)) {
+                    throw new InsufficientPrivilegesException();
+                }
+            }
 
 
             if(fileId == null){
@@ -379,6 +432,10 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public Collection<String> list(String path, boolean subCheck) throws InsufficientPrivilegesException, rs.edu.raf.storage.exceptions.FileNotFoundException {
+
+        // Provera da li imamo ulogovanog korisnika
+        if(currentStorageModel.getCurrentUser() == null)
+            throw new CurrentUserIsNullException();
 
         //provera da li trenutni korisnik ima privilegiju za citanje
         if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.VIEW)){
@@ -444,6 +501,10 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public Collection<String> list(String path, String argument, Operations operation, boolean subSearch) throws InsufficientPrivilegesException, rs.edu.raf.storage.exceptions.FileNotFoundException {
+
+        // Provera da li imamo ulogovanog korisnika
+        if(currentStorageModel.getCurrentUser() == null)
+            throw new CurrentUserIsNullException();
 
         //provera da li trenutni korisnik ima privilegiju za citanje
         if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.VIEW)){
@@ -669,6 +730,11 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public void put(String destination, String ... sources) throws InsufficientPrivilegesException, InvalidExtensionException, FileLimitExceededException, StorageSizeExceededException, FileAlreadyInStorageException{
+
+        // Provera da li imamo ulogovanog korisnika
+        if(currentStorageModel.getCurrentUser() == null)
+            throw new CurrentUserIsNullException();
+
         //provera da li trenutni korisnik ima privilegiju za upisivanje
         if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.CREATE)){
             throw new InsufficientPrivilegesException();
@@ -720,10 +786,16 @@ public class GoogleDriveAPI implements FileStorage {
             File file = null;
             try {
                 file = service.files().create(fileMetadata, mediaContent)
-                        .setFields("id, parents")
+                        .setFields("id, parents, mimeType")
                         .execute();
             } catch (IOException e) {
                 e.printStackTrace();
+            }
+            if(fileMetadata.getMimeType().equalsIgnoreCase("application/vnd.google-apps.folder")){
+                String[] subs = list(fileMetadata.getName(), true).toArray(new String[0]);
+                for(String s : subs){
+                    put(destination, s);
+                }
             }
             int filecount = getCurrentStorageModel().getCurrNumberOfFiles();
             getCurrentStorageModel().setCurrNumberOfFiles(filecount + 1);
@@ -734,6 +806,10 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public void get(String ... paths) throws InsufficientPrivilegesException, rs.edu.raf.storage.exceptions.FileNotFoundException {
+
+        // Provera da li imamo ulogovanog korisnika
+        if(currentStorageModel.getCurrentUser() == null)
+            throw new CurrentUserIsNullException();
 
         //provera da li trenutni korisnik ima privilegiju za citanje
         if(!currentStorageModel.getCurrentUser().getPrivileges().contains(Privileges.DOWNLOAD)){
@@ -830,7 +906,7 @@ public class GoogleDriveAPI implements FileStorage {
         // Proveravamo ako vec postoji folder sa ovim imenom koji je skladiste (uz pomoc description taga 'SKLADISTE')
         if(findFile(rootName)) {
             //TODO: popraviti security ili pristup ovoj stavci za SKLADISTE
-            if (getFile(rootName).getDescription().equalsIgnoreCase("SKLADISTE") &&
+            if (getFile(rootName).getDescription().equalsIgnoreCase("SKLADISTE") ||
                 (getFile("config.json").getParents().contains(rootName) &&
                     getFile("users.json").getParents().contains(rootName))){
                 isStorage = true;
@@ -919,12 +995,14 @@ public class GoogleDriveAPI implements FileStorage {
     @Override
     public void limitNumberOfFiles(int fileNumberMax, String path) throws InsufficientPrivilegesException, rs.edu.raf.storage.exceptions.FileNotFoundException {
 
+        // Provera da li imamo ulogovanog korisnika
+        if(currentStorageModel.getCurrentUser() == null)
+            throw new CurrentUserIsNullException();
+
         // Provera da li superuser poziva metodu
         if(!currentStorageModel.getSuperuser().equals(currentStorageModel.getCurrentUser())){
             throw new InsufficientPrivilegesException();
         }
-
-        java.io.File directory = new java.io.File(path);
 
         // Provera da li postoji prosledjeni folder
         if(!findFile(path)){
@@ -939,6 +1017,10 @@ public class GoogleDriveAPI implements FileStorage {
     @Override
     public void limitStorageSize(long limit) throws InsufficientPrivilegesException{
 
+        // Provera da li imamo ulogovanog korisnika
+        if(currentStorageModel.getCurrentUser() == null)
+            throw new CurrentUserIsNullException();
+
         //Proveravamo da li superuser poziva metodu
         if(!currentStorageModel.getSuperuser().equals(currentStorageModel.getCurrentUser())){
             throw new InsufficientPrivilegesException();
@@ -952,6 +1034,10 @@ public class GoogleDriveAPI implements FileStorage {
     @Override
     public void restrictExtension(String extension) throws InsufficientPrivilegesException{
 
+        // Provera da li imamo ulogovanog korisnika
+        if(currentStorageModel.getCurrentUser() == null)
+            throw new CurrentUserIsNullException();
+
         //Proveravamo da li superuser poziva metodu
         if(!currentStorageModel.getSuperuser().equals(currentStorageModel.getCurrentUser())){
             throw new InsufficientPrivilegesException();
@@ -964,6 +1050,11 @@ public class GoogleDriveAPI implements FileStorage {
 
     @Override
     public void setFolderPrivileges(String folderName, Set<Privileges> privileges) {
+
+        // Provera da li imamo ulogovanog korisnika
+        if(currentStorageModel.getCurrentUser() == null)
+            throw new CurrentUserIsNullException();
+
         //Proveravamo da li superuser poziva metodu
         if(!currentStorageModel.getSuperuser().equals(currentStorageModel.getCurrentUser())){
             throw new InsufficientPrivilegesException();
@@ -983,8 +1074,14 @@ public class GoogleDriveAPI implements FileStorage {
         currentStorageModel.getFolderPrivileges().put(folderName, privilegesToAdd);
     }
 
+    //TODO: Promeniti kako radi user, nek se prosledi username i password, a ne sam user...
     @Override
     public void addNewUser(User user, Set<Privileges> privileges) throws InsufficientPrivilegesException, UserAlreadyExistsException {
+
+        // Provera da li imamo ulogovanog korisnika
+        if(currentStorageModel.getCurrentUser() == null)
+            throw new CurrentUserIsNullException();
+
         //Proveravamo da li superuser poziva metodu
         if(!currentStorageModel.getSuperuser().equals(currentStorageModel.getCurrentUser())){
             throw new InsufficientPrivilegesException();
@@ -1000,9 +1097,64 @@ public class GoogleDriveAPI implements FileStorage {
         reuploadJSONS();
     }
 
+    public void addNewUser(String username, String password, Set<Privileges> privileges) throws InsufficientPrivilegesException, UserAlreadyExistsException {
 
+        // Provera da li imamo ulogovanog korisnika
+        if(currentStorageModel.getCurrentUser() == null)
+            throw new CurrentUserIsNullException();
+
+        //Proveravamo da li superuser poziva metodu
+        if(!currentStorageModel.getSuperuser().equals(currentStorageModel.getCurrentUser())){
+            throw new InsufficientPrivilegesException();
+        }
+
+        User user = new User(username, password);
+
+        //proveravamo da li korisnik vec postoji
+        if(currentStorageModel.getUserList().contains(user)){
+            throw new UserAlreadyExistsException();
+        }
+
+        user.setPrivileges(privileges);
+        currentStorageModel.getUserList().add(user);
+        reuploadJSONS();
+    }
+
+    //TODO: Promeniti kako radi user, nek se prosledi username i password, a ne sam user...
     @Override
     public void removeUser(User user) throws UserNotFoundException, InsufficientPrivilegesException {
+
+        // Provera da li imamo ulogovanog korisnika
+        if(currentStorageModel.getCurrentUser() == null)
+            throw new CurrentUserIsNullException();
+
+        //Proveravamo da li superuser poziva metodu
+        if(!currentStorageModel.getSuperuser().equals(currentStorageModel.getCurrentUser())){
+            throw new InsufficientPrivilegesException();
+        }
+
+        //Proveravamo da li postoji odabrani user za brisanje
+        boolean userFound = false;
+        for(User u : currentStorageModel.getUserList()){
+            if(u.getUsername().equalsIgnoreCase(user.getUsername())){
+                userFound = true;
+            }
+        }
+
+        if(userFound){
+            currentStorageModel.getUserList().remove(user);
+            reuploadJSONS();
+        } else{
+            throw new UserNotFoundException();
+        }
+    }
+
+    public void removeUser(String username) throws UserNotFoundException, InsufficientPrivilegesException {
+
+        // Provera da li imamo ulogovanog korisnika
+        if(currentStorageModel.getCurrentUser() == null)
+            throw new CurrentUserIsNullException();
+
         //Proveravamo da li superuser poziva metodu
         if(!currentStorageModel.getSuperuser().equals(currentStorageModel.getCurrentUser())){
             throw new InsufficientPrivilegesException();
@@ -1012,7 +1164,8 @@ public class GoogleDriveAPI implements FileStorage {
         boolean userFound = false;
         User targetUser = null;
         for(User u : currentStorageModel.getUserList()){
-            if(u.getUsername().equalsIgnoreCase(user.getUsername())){
+            if(u.getUsername().equalsIgnoreCase(username)){
+                targetUser = u;
                 userFound = true;
             }
         }
@@ -1026,7 +1179,7 @@ public class GoogleDriveAPI implements FileStorage {
     }
 
 
-    //TODO: Adaptirano ali treba testirati
+    ///TODO: Promeniti kako radi user, nek se prosledi username i password, a ne sam user...
     @Override
     public void login(User user) throws UserAlreadyLoggedInException, UserNotFoundException{
 
@@ -1049,8 +1202,39 @@ public class GoogleDriveAPI implements FileStorage {
         reuploadJSONS();
     }
 
+    public void login(String username, String password) throws UserAlreadyLoggedInException, UserNotFoundException{
+
+        User connectingUser = null;
+        boolean found = false;
+
+        //prolazimo kroz sve usere i trazimo poklapanje usernamea i passworda
+        for(User u : currentStorageModel.getUserList()){
+            if(u.getUsername().equalsIgnoreCase(username) && u.getPassword().equalsIgnoreCase(password)){
+                found = true;
+                connectingUser = u;
+            }
+        }
+
+        //provera postojanja usera
+        if(!found)
+            throw new UserNotFoundException();
+
+        //provera da li je uneti user vec ulogovan
+        if(currentStorageModel.getCurrentUser().equals(connectingUser))
+            throw new UserAlreadyLoggedInException();
+
+        currentStorageModel.setCurrentUser(connectingUser);
+        reuploadJSONS();
+    }
+
+    //TODO: Promeniti kako radi user, nek se prosledi username i password, a ne sam user...
     @Override
     public void logout(User user) throws UserNotFoundException, UserLogoutException {
+
+        // Provera da li imamo ulogovanog korisnika
+        if(currentStorageModel.getCurrentUser() == null)
+            throw new CurrentUserIsNullException();
+
         User disconnectingUser = null;
 
         for(User u : currentStorageModel.getUserList()){
@@ -1062,6 +1246,33 @@ public class GoogleDriveAPI implements FileStorage {
         if(disconnectingUser==null)
             throw new UserNotFoundException();
 
+        if(!currentStorageModel.getCurrentUser().equals(disconnectingUser))
+            throw new UserLogoutException();
+
+        currentStorageModel.setCurrentUser(null);
+        reuploadJSONS();
+    }
+
+    public void logout() throws UserNotFoundException, UserLogoutException {
+
+        // Provera da li imamo ulogovanog korisnika
+        if(currentStorageModel.getCurrentUser() == null)
+            throw new CurrentUserIsNullException();
+
+        User disconnectingUser = null;
+
+        //prolazimo kroz listu usera dok ne nadjemo trenutnog korisnika
+        for(User u : currentStorageModel.getUserList()){
+            if(u.equals(currentStorageModel.getCurrentUser())){
+                disconnectingUser = u;
+            }
+        }
+
+        //provera postojanja usera
+        if(disconnectingUser==null)
+            throw new UserNotFoundException();
+
+        //provera da korisnik pokusava da izloguje nekoga ko nije on sam
         if(!currentStorageModel.getCurrentUser().equals(disconnectingUser))
             throw new UserLogoutException();
 
