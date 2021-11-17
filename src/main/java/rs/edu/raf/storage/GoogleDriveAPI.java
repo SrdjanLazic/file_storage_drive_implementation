@@ -727,7 +727,7 @@ public class GoogleDriveAPI implements FileStorage {
         return globalList;
     }
 
-
+    //TODO ne radi za foldere?
     @Override
     public void put(String destination, String ... sources) throws InsufficientPrivilegesException, InvalidExtensionException, FileLimitExceededException, StorageSizeExceededException, FileAlreadyInStorageException{
 
@@ -773,6 +773,7 @@ public class GoogleDriveAPI implements FileStorage {
             }
 
             java.io.File temp = new java.io.File(String.valueOf(original));
+            System.out.println(temp.getName());
 
             File fileMetadata = new File();
             fileMetadata.setName(temp.getName());
@@ -783,6 +784,7 @@ public class GoogleDriveAPI implements FileStorage {
             //java.io.File filePath = new java.io.File();
             FileContent mediaContent = new FileContent(null, temp);
 
+
             File file = null;
             try {
                 file = service.files().create(fileMetadata, mediaContent)
@@ -790,13 +792,13 @@ public class GoogleDriveAPI implements FileStorage {
                         .execute();
             } catch (IOException e) {
                 e.printStackTrace();
-            }
+            }/*
             if(fileMetadata.getMimeType().equalsIgnoreCase("application/vnd.google-apps.folder")){
-                String[] subs = list(fileMetadata.getName(), true).toArray(new String[0]);
+                String[] subs = list(temp.getName(), true).toArray(new String[0]);
                 for(String s : subs){
                     put(destination, s);
                 }
-            }
+            }*/
             int filecount = getCurrentStorageModel().getCurrNumberOfFiles();
             getCurrentStorageModel().setCurrNumberOfFiles(filecount + 1);
             System.out.println("File uploaded into Google Drive Storage - File ID: " + file.getId());
