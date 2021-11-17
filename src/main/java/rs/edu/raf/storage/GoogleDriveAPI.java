@@ -779,6 +779,7 @@ public class GoogleDriveAPI implements FileStorage {
             fileMetadata.setName(temp.getName());
             if (temp.isDirectory()) {
                 fileMetadata.setMimeType("application/vnd.google-apps.folder");
+                throw new InvalidExtensionException("ne mozete preuzimati kompletne foldere");
             }
             fileMetadata.setParents(Collections.singletonList(folderId));
             //java.io.File filePath = new java.io.File();
