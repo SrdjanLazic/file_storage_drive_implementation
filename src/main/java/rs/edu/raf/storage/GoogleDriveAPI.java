@@ -1,5 +1,6 @@
 package rs.edu.raf.storage;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
@@ -878,12 +879,14 @@ public class GoogleDriveAPI implements FileStorage {
 
     //Inicijalizovanje remote storagea na google driveu - ispisati celu putanju gde ce biti i download folder
     @Override
-    public void initializeStorage(String rootPath) {
+    public void initializeStorage(String rootPath, String username, String password) throws UserNotFoundException{
         try {
             this.service = getDriveService();
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        User user = new User(username,password);
 
         //local storage path kreiranje
         java.io.File storageRoot = new java.io.File(rootPath);
@@ -920,13 +923,8 @@ public class GoogleDriveAPI implements FileStorage {
 
         // Ako jeste skladiste, procitaj user i config fajlove
         if(isStorage){
-            System.out.println("Direktorijum je vec skladiste. Unesite username i password kako biste se konektovali na skladiste.");
-            System.out.println("Username:");
-            String username = scanner.nextLine();
-            System.out.println("Password:");
-            String password = scanner.nextLine();
             ObjectMapper objectMapper = new ObjectMapper();
-
+            objectMapper.enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
             List<User> users = new ArrayList<>();
             try {
                 users = Arrays.asList(objectMapper.readValue(new java.io.File(usersLocalPath),User[].class)) /*objectMapper.readValue(new java.io.File(usersLocalPath), User.class)*/;
@@ -936,15 +934,15 @@ public class GoogleDriveAPI implements FileStorage {
 
             boolean found = false;
             // Provera kredencijala - uporedjivanje prosledjenih username i password-a i procitanih iz users.json fajla
-            for(User user: users) {
-                if (username.equalsIgnoreCase(user.getUsername()) && password.equalsIgnoreCase(user.getPassword())) {
+            for(User u: users) {
+                if (u.getUsername().equalsIgnoreCase(user.getUsername()) && u.getPassword().equalsIgnoreCase(user.getPassword())) {
                     found = true;
                     try {
                         // Ako se podaci User-a match-uju, procitaj config, setuj trenutni storage i dodaj skladiste u listu skladista
                         DriveStorageModel storageModel = objectMapper.readValue(new java.io.File(configLocalPath), DriveStorageModel.class);
                         this.driveStorageModelList.add(storageModel);
                         setCurrentStorageModel(storageModel);
-                        currentStorageModel.setCurrentUser(user);
+                        currentStorageModel.setCurrentUser(u);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -956,22 +954,11 @@ public class GoogleDriveAPI implements FileStorage {
             }
             // Pravimo novo skladiste, prilikom kreiranja User-u koji ga je kreirao dodeljujemo sve privilegije
         } else {
-            System.out.println("Direktorijum nije skladiste. Da li zelite da kreirate novo skladiste? Unesite DA ili NE");
-            String choice = scanner.nextLine();
 
-            if(choice.equalsIgnoreCase("DA")){
+            createStorage(rootName);
+            String rootID = findID(rootName);
 
-                createStorage(rootName);
-                String rootID = findID(rootName);
-
-                System.out.println("Unesite username i password kako biste kreirali skladiste.");
-                System.out.println("Username:");
-                String username = scanner.nextLine();
-                System.out.println("Password:");
-                String password = scanner.nextLine();
-
-                User user = new User(username, password);
-                user.setPrivileges(Set.of(Privileges.values()));
+            user.setPrivileges(Set.of(Privileges.values()));
 
 //                //pravimo users.json i config.json U DRIVEU
 //                File usersDrive = new File().setName("users.json");
@@ -981,15 +968,10 @@ public class GoogleDriveAPI implements FileStorage {
 //                java.io.File usersLocal = new java.io.File(usersLocalPath);
 //                java.io.File configLocal = new java.io.File(configLocalPath);
 
-                DriveStorageModel storageModel = new DriveStorageModel(user, rootName, rootID , downloadPath, usersLocalPath, configLocalPath);
-                this.driveStorageModelList.add(storageModel);
-                setCurrentStorageModel(storageModel);
-                put(rootName, usersLocalPath, configLocalPath);
-
-            } else {
-                System.out.println("Skladiste nije kreirano.");
-                return;
-            }
+            DriveStorageModel storageModel = new DriveStorageModel(user, rootName, rootID , downloadPath, usersLocalPath, configLocalPath);
+            this.driveStorageModelList.add(storageModel);
+            setCurrentStorageModel(storageModel);
+            put(rootName, usersLocalPath, configLocalPath);
 
         }
 
@@ -1052,7 +1034,7 @@ public class GoogleDriveAPI implements FileStorage {
     }
 
     @Override
-    public void setFolderPrivileges(String folderName, Set<Privileges> privileges) {
+    public void setFolderPrivileges(String username, String folderName, Set<Privileges> privileges) {
 
         // Provera da li imamo ulogovanog korisnika
         if(currentStorageModel.getCurrentUser() == null)
@@ -1074,32 +1056,17 @@ public class GoogleDriveAPI implements FileStorage {
         else if(privileges.contains(Privileges.VIEW))
             privilegesToAdd.add((Privileges.VIEW));
 
-        currentStorageModel.getFolderPrivileges().put(folderName, privilegesToAdd);
+        User user = null;
+        for(User u : currentStorageModel.getUserList()){
+            if(u.getUsername().equalsIgnoreCase(username)){
+                user = u;
+            }
+        }
+
+        user.getFolderPrivileges().put(folderName, privilegesToAdd);
     }
 
-    //TODO: Promeniti kako radi user, nek se prosledi username i password, a ne sam user...
     @Override
-    public void addNewUser(User user, Set<Privileges> privileges) throws InsufficientPrivilegesException, UserAlreadyExistsException {
-
-        // Provera da li imamo ulogovanog korisnika
-        if(currentStorageModel.getCurrentUser() == null)
-            throw new CurrentUserIsNullException();
-
-        //Proveravamo da li superuser poziva metodu
-        if(!currentStorageModel.getSuperuser().equals(currentStorageModel.getCurrentUser())){
-            throw new InsufficientPrivilegesException();
-        }
-
-        //proveravamo da li korisnik vec postoji
-        if(currentStorageModel.getUserList().contains(user)){
-            throw new UserAlreadyExistsException();
-        }
-
-        user.setPrivileges(privileges);
-        currentStorageModel.getUserList().add(user);
-        reuploadJSONS();
-    }
-
     public void addNewUser(String username, String password, Set<Privileges> privileges) throws InsufficientPrivilegesException, UserAlreadyExistsException {
 
         // Provera da li imamo ulogovanog korisnika
@@ -1123,35 +1090,7 @@ public class GoogleDriveAPI implements FileStorage {
         reuploadJSONS();
     }
 
-    //TODO: Promeniti kako radi user, nek se prosledi username i password, a ne sam user...
     @Override
-    public void removeUser(User user) throws UserNotFoundException, InsufficientPrivilegesException {
-
-        // Provera da li imamo ulogovanog korisnika
-        if(currentStorageModel.getCurrentUser() == null)
-            throw new CurrentUserIsNullException();
-
-        //Proveravamo da li superuser poziva metodu
-        if(!currentStorageModel.getSuperuser().equals(currentStorageModel.getCurrentUser())){
-            throw new InsufficientPrivilegesException();
-        }
-
-        //Proveravamo da li postoji odabrani user za brisanje
-        boolean userFound = false;
-        for(User u : currentStorageModel.getUserList()){
-            if(u.getUsername().equalsIgnoreCase(user.getUsername())){
-                userFound = true;
-            }
-        }
-
-        if(userFound){
-            currentStorageModel.getUserList().remove(user);
-            reuploadJSONS();
-        } else{
-            throw new UserNotFoundException();
-        }
-    }
-
     public void removeUser(String username) throws UserNotFoundException, InsufficientPrivilegesException {
 
         // Provera da li imamo ulogovanog korisnika
@@ -1181,30 +1120,7 @@ public class GoogleDriveAPI implements FileStorage {
         }
     }
 
-
-    ///TODO: Promeniti kako radi user, nek se prosledi username i password, a ne sam user...
     @Override
-    public void login(User user) throws UserAlreadyLoggedInException, UserNotFoundException{
-
-        User connectingUser = null;
-        boolean found = false;
-
-        for(User u : currentStorageModel.getUserList()){
-            if(u.equals(user)){
-                found = true;
-                connectingUser = u;
-            }
-        }
-        if(!found)
-            throw new UserNotFoundException();
-
-        if(currentStorageModel.getCurrentUser().equals(connectingUser))
-            throw new UserAlreadyLoggedInException();
-
-        currentStorageModel.setCurrentUser(connectingUser);
-        reuploadJSONS();
-    }
-
     public void login(String username, String password) throws UserAlreadyLoggedInException, UserNotFoundException{
 
         User connectingUser = null;
@@ -1230,54 +1146,12 @@ public class GoogleDriveAPI implements FileStorage {
         reuploadJSONS();
     }
 
-    //TODO: Promeniti kako radi user, nek se prosledi username i password, a ne sam user...
     @Override
-    public void logout(User user) throws UserNotFoundException, UserLogoutException {
+    public void logout() throws UserNotFoundException, UserLogoutException, CurrentUserIsNullException {
 
         // Provera da li imamo ulogovanog korisnika
         if(currentStorageModel.getCurrentUser() == null)
-            throw new CurrentUserIsNullException();
-
-        User disconnectingUser = null;
-
-        for(User u : currentStorageModel.getUserList()){
-            if(u.equals(disconnectingUser)){
-                disconnectingUser = u;
-            }
-        }
-
-        if(disconnectingUser==null)
-            throw new UserNotFoundException();
-
-        if(!currentStorageModel.getCurrentUser().equals(disconnectingUser))
-            throw new UserLogoutException();
-
-        currentStorageModel.setCurrentUser(null);
-        reuploadJSONS();
-    }
-
-    public void logout() throws UserNotFoundException, UserLogoutException {
-
-        // Provera da li imamo ulogovanog korisnika
-        if(currentStorageModel.getCurrentUser() == null)
-            throw new CurrentUserIsNullException();
-
-        User disconnectingUser = null;
-
-        //prolazimo kroz listu usera dok ne nadjemo trenutnog korisnika
-        for(User u : currentStorageModel.getUserList()){
-            if(u.equals(currentStorageModel.getCurrentUser())){
-                disconnectingUser = u;
-            }
-        }
-
-        //provera postojanja usera
-        if(disconnectingUser==null)
-            throw new UserNotFoundException();
-
-        //provera da korisnik pokusava da izloguje nekoga ko nije on sam
-        if(!currentStorageModel.getCurrentUser().equals(disconnectingUser))
-            throw new UserLogoutException();
+            throw new CurrentUserIsNullException("Nijedan korisnik nije ulogovan, ne mozete se ponovo izlogovati");
 
         currentStorageModel.setCurrentUser(null);
         reuploadJSONS();
