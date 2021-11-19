@@ -330,17 +330,16 @@ public class GoogleDriveAPI implements FileStorage {
         for(String i: paths) {
             String path = i;
             String fileId = findID(path);
-            String parentName = getFileFromID(getFile(path).getParents().toString()).getName();
 
             if(fileId == null)
                 throw new rs.edu.raf.storage.exceptions.FileNotFoundException();
 
             //provera da li trenutni korisnik ima privilegiju za brisanje na nivou foldera
-            if(currentStorageModel.getCurrentUser().getFolderPrivileges().containsKey(parentName)) {
-                if (!currentStorageModel.getCurrentUser().getFolderPrivileges().get(parentName).contains(Privileges.DELETE)) {
-                    throw new InsufficientPrivilegesException("Greska! Korisnik nema potrebnu privilegiju u odabranom direktorijumu");
-                }
-            }
+//            if(currentStorageModel.getCurrentUser().getFolderPrivileges().containsKey(parentName)) {
+//                if (!currentStorageModel.getCurrentUser().getFolderPrivileges().get(parentName).contains(Privileges.DELETE)) {
+//                    throw new InsufficientPrivilegesException("Greska! Korisnik nema potrebnu privilegiju u odabranom direktorijumu");
+//                }
+//            }
 
             if(!(currentStorageModel.getCurrentUser().equals(currentStorageModel.getSuperuser())) && (path.contentEquals("users.json") || path.contentEquals("config.json"))){
                 throw new InsufficientPrivilegesException("Nije moguce obrisati users.json i config.json fajlove");
@@ -390,14 +389,14 @@ public class GoogleDriveAPI implements FileStorage {
         for(String i : sources) {
             String source = i;
             String fileId = findID(source);
-            String parentName = getFileFromID(getFile(source).getParents().toString()).getName();
+//            String parentName = getFileFromID(getFile(source).getParents().toString()).getName();
 
             //provera da li trenutni korisnik ima privilegiju za preuzimanje sa foldera za pomeranje na drugi
-            if(currentStorageModel.getCurrentUser().getFolderPrivileges().containsKey(parentName)) {
-                if (!currentStorageModel.getCurrentUser().getFolderPrivileges().get(parentName).contains(Privileges.DOWNLOAD)) {
-                    throw new InsufficientPrivilegesException();
-                }
-            }
+//            if(currentStorageModel.getCurrentUser().getFolderPrivileges().containsKey(parentName)) {
+//                if (!currentStorageModel.getCurrentUser().getFolderPrivileges().get(parentName).contains(Privileges.DOWNLOAD)) {
+//                    throw new InsufficientPrivilegesException();
+//                }
+//            }
 
 
             if(fileId == null){
@@ -843,14 +842,14 @@ public class GoogleDriveAPI implements FileStorage {
             String fileId = findID(path);
             String fileName = getFile(path).getName();
             String fileMime = getFile(path).getMimeType();
-            String parentName = getFileFromID(getFile(path).getParents().toString()).getName();
+//            String parentName = getFileFromID(getFile(path).getParents().toString()).getName();
 
             //provera da li trenutni korisnik ima privilegiju za preuzimanje sa foldera
-            if(currentStorageModel.getCurrentUser().getFolderPrivileges().containsKey(parentName)) {
-                if (!currentStorageModel.getCurrentUser().getFolderPrivileges().get(parentName).contains(Privileges.DOWNLOAD)) {
-                    throw new InsufficientPrivilegesException();
-                }
-            }
+//            if(currentStorageModel.getCurrentUser().getFolderPrivileges().containsKey(parentName)) {
+//                if (!currentStorageModel.getCurrentUser().getFolderPrivileges().get(parentName).contains(Privileges.DOWNLOAD)) {
+//                    throw new InsufficientPrivilegesException();
+//                }
+//            }
 
             if(fileId == null){
                 throw new rs.edu.raf.storage.exceptions.FileNotFoundException("Nije pronadjen fajl koji zelite da prebacite");
