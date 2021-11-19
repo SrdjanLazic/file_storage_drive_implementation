@@ -132,7 +132,6 @@ public class GoogleDriveAPI implements FileStorage {
             throw new InsufficientPrivilegesException("Greska! User nema potrebne privilegije");
         }
 
-        //TODO popraviti ovaj check
         //provera da li trenutni korisnik ima privilegiju za kreiranje na nivou zadate putanje
         if(currentStorageModel.getCurrentUser().getFolderPrivileges().containsKey(path)) {
             if (!(currentStorageModel.getCurrentUser().getFolderPrivileges().get(path).contains(Privileges.CREATE))) {
@@ -150,12 +149,12 @@ public class GoogleDriveAPI implements FileStorage {
             fileMetadata.setName(folderName);
             fileMetadata.setMimeType("application/vnd.google-apps.folder");
             fileMetadata.setParents(Collections.singletonList(folderId));
-            getCurrentStorageModel().setCurrNumberOfFiles(getCurrentStorageModel().getCurrNumberOfFiles() + 1);
+//            getCurrentStorageModel().setCurrNumberOfFiles(getCurrentStorageModel().getCurrNumberOfFiles() + 1);
 
             File file = null;
             try {
                 file = service.files().create(fileMetadata)
-                        .setFields("id, name, parents")
+                        .setFields("id, name, parents, mimeType")
                         .execute();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -215,7 +214,7 @@ public class GoogleDriveAPI implements FileStorage {
             File file = null;
             try {
                 file = service.files().create(fileMetadata)
-                        .setFields("id, name, parents")
+                        .setFields("id, name, parents, mimeType")
                         .execute();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -253,14 +252,14 @@ public class GoogleDriveAPI implements FileStorage {
         File file = null;
         try {
             file = service.files().create(fileMetadata)
-                        .setFields("id, name, parents")
+                        .setFields("id, name, parents, mimeType")
                         .execute();
         } catch (IOException e) {
             e.printStackTrace();
         }
 //        System.out.println("Folder " + file.getName() + " created!");
 //        System.out.println("Folder ID: " + file.getId());
-        getCurrentStorageModel().setCurrNumberOfFiles(getCurrentStorageModel().getCurrNumberOfFiles() + 1);
+//        getCurrentStorageModel().setCurrNumberOfFiles(getCurrentStorageModel().getCurrNumberOfFiles() + 1);
         reuploadJSONS();
     }
 
@@ -290,10 +289,12 @@ public class GoogleDriveAPI implements FileStorage {
         // Provera da li cemo prekoraciti broj fajlova u nekom folderu:
         // Prvo proverava da li u HashMap-u postoji folder u kojem se kreira novi fajl
         // Ako postoji, proverava da li (trenutni broj fajlova u tom folderu + 1) prekoracuje maksimalan definisani iz HashMap-a
-        if(currentStorageModel.getMaxNumberOfFilesInDirectory().containsKey(currentStorageModel.getCurrentStorageName())){
-            int numberOfFiles = currentStorageModel.getCurrNumberOfFiles();
-            if(numberOfFiles + 1> currentStorageModel.getMaxNumberOfFilesInDirectory().get(getCurrentStorageModel()))
-                throw new FileLimitExceededException();
+        if(currentStorageModel.isMaxNumberOfFilesInDirectorySet()) {
+            if (currentStorageModel.getMaxNumberOfFilesInDirectory().containsKey(currentStorageModel.getCurrentStorageName())) {
+                int numberOfFiles = currentStorageModel.getCurrNumberOfFiles();
+                if (numberOfFiles + 1 > currentStorageModel.getMaxNumberOfFilesInDirectory().get(currentStorageModel.getCurrentStorageName()))
+                    throw new FileLimitExceededException();
+            }
         }
 
         File fileMetadata = new File();
@@ -303,7 +304,7 @@ public class GoogleDriveAPI implements FileStorage {
         File file = null;
         try {
             file = service.files().create(fileMetadata)
-                        .setFields("id, name, parents")
+                        .setFields("id, name, parents, mimeType")
                         .execute();
         } catch (IOException e) {
             e.printStackTrace();
@@ -354,7 +355,15 @@ public class GoogleDriveAPI implements FileStorage {
 //                    System.out.println("An error occurred: " + e);
                     throw new FileDeleteFailedException();
                 }
-                getCurrentStorageModel().setCurrNumberOfFiles(getCurrentStorageModel().getCurrNumberOfFiles() - 1);
+                int filesDeleted = 1;
+                try {
+                    if (getFile(i).getMimeType() != null && getFile(i).getMimeType().equals("application/vnd.google-apps.folder")) {
+                        filesDeleted += list(i, true).size() - 1;
+                    }
+                } catch (NullPointerException e){
+                    
+                }
+                getCurrentStorageModel().setCurrNumberOfFiles(getCurrentStorageModel().getCurrNumberOfFiles() - filesDeleted);
 //                System.out.println("File " + path + " deleted!");
             }
         }
@@ -431,13 +440,13 @@ public class GoogleDriveAPI implements FileStorage {
                         .execute();
             } catch (IOException e) {
                 e.printStackTrace();
-            }/*
-            if(getFile(source).getMimeType().equals("application/vnd.google-apps.folder")){
-                Collection<String> subs = list(source, true);
-                for (String s: subs){
-                    move(source, s);
-                }
-            }*/
+            }
+//            if(getFile(source).getMimeType().equals("application/vnd.google-apps.folder")){
+//                Collection<String> subs = list(source, true);
+//                for (String s: subs){
+//                    move(source, s);
+//                }
+//            }
         }
     }
 
@@ -778,15 +787,16 @@ public class GoogleDriveAPI implements FileStorage {
             if(findFile(source))
                 throw new FileAlreadyInStorageException();
 
+            long size = 0;
+            try {
+                size = Files.size(original);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
             //TODO: provere za SIZE EXCEEDED - srediti taj try catch nekako
             if(currentStorageModel.isStorageSizeLimitSet()) {
-                try {
-                    long size = Files.size(original);
-                    if (currentStorageModel.getCurrentStorageSize() + size > currentStorageModel.getStorageSizeLimit()) {
-                        throw new StorageSizeExceededException();
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
+                if (currentStorageModel.getCurrentStorageSize() + size > currentStorageModel.getStorageSizeLimit()) {
+                    throw new StorageSizeExceededException();
                 }
             }
 
@@ -818,6 +828,7 @@ public class GoogleDriveAPI implements FileStorage {
                     put(destination, s);
                 }
             }*/
+            currentStorageModel.setCurrentStorageSize(currentStorageModel.getCurrentStorageSize()+size);
             int filecount = getCurrentStorageModel().getCurrNumberOfFiles();
             getCurrentStorageModel().setCurrNumberOfFiles(filecount + 1);
 //            System.out.println("File uploaded into Google Drive Storage - File ID: " + file.getId());
@@ -871,7 +882,7 @@ public class GoogleDriveAPI implements FileStorage {
             OutputStream outputStream = null;
             boolean googleDocCheck = false;
             try {
-                outputStream = new FileOutputStream(currentStorageModel.getDownloadFolder() + fileName);
+                outputStream = new FileOutputStream(currentStorageModel.getDownloadFolder() + "/" + fileName);
                 //System.out.println("Filename  " + fileName);
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
@@ -1035,7 +1046,7 @@ public class GoogleDriveAPI implements FileStorage {
         }
 
         currentStorageModel.setStorageSizeLimit(limit);
-        currentStorageModel.setStorageSizeLimit(limit);
+        currentStorageModel.setStorageSizeLimitSet(true);
         reuploadJSONS();
     }
 
@@ -1135,6 +1146,8 @@ public class GoogleDriveAPI implements FileStorage {
         User targetUser = null;
         for(User u : currentStorageModel.getUserList()){
             if(u.getUsername().equalsIgnoreCase(username)){
+                if(u.getUsername().equals(currentStorageModel.getSuperuser().getUsername()))
+                    throw new UserNotFoundException("Ne mozete obrisati superusera");
                 targetUser = u;
                 userFound = true;
             }
@@ -1154,6 +1167,9 @@ public class GoogleDriveAPI implements FileStorage {
         User connectingUser = null;
         boolean found = false;
 
+        if(currentStorageModel.getCurrentUser()!=null)
+            throw new UserAlreadyLoggedInException("Molimo vas da se prvo izloguje trenutni korisnik.");
+
         //prolazimo kroz sve usere i trazimo poklapanje usernamea i passworda
         for(User u : currentStorageModel.getUserList()){
             if(u.getUsername().equalsIgnoreCase(username) && u.getPassword().equalsIgnoreCase(password)){
@@ -1167,8 +1183,8 @@ public class GoogleDriveAPI implements FileStorage {
             throw new UserNotFoundException();
 
         //provera da li je uneti user vec ulogovan
-        if(currentStorageModel.getCurrentUser().equals(connectingUser))
-            throw new UserAlreadyLoggedInException();
+//        if(currentStorageModel.getCurrentUser().equals(connectingUser))
+//            throw new UserAlreadyLoggedInException();
 
         currentStorageModel.setCurrentUser(connectingUser);
         reuploadJSONS();
