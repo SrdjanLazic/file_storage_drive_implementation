@@ -194,7 +194,7 @@ public class GoogleDriveAPI implements FileStorage {
         // Ako postoji, proverava da li (trenutni broj fajlova u tom folderu + 1) prekoracuje maksimalan definisani iz HashMap-a
         if(currentStorageModel.getMaxNumberOfFilesInDirectory().containsKey(path)){
             int numberOfFiles = list(path, true).size();
-            System.out.println("numberOfFiles in destination folder is " + numberOfFiles);
+//            System.out.println("numberOfFiles in destination folder is " + numberOfFiles);
             if(numberOfFiles + filenames.length > currentStorageModel.getMaxNumberOfFilesInDirectory().get(path))
                 throw new FileLimitExceededException();
         }
