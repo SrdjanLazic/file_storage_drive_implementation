@@ -335,6 +335,19 @@ public class GoogleDriveAPI implements FileStorage {
             if(fileId == null)
                 throw new rs.edu.raf.storage.exceptions.FileNotFoundException();
 
+            FileList result = null;
+            try {
+                result = service.files().list()
+                        .setFields("files(id, parents, name, mimeType, size, description)")
+                        .execute();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            List<File> files = result.getFiles();
+            for(File f: files){
+                f.getId();
+            }
+
             //provera da li trenutni korisnik ima privilegiju za brisanje na nivou foldera
 //            if(currentStorageModel.getCurrentUser().getFolderPrivileges().containsKey(parentName)) {
 //                if (!currentStorageModel.getCurrentUser().getFolderPrivileges().get(parentName).contains(Privileges.DELETE)) {
