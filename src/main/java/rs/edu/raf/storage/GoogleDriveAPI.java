@@ -1281,7 +1281,7 @@ public class GoogleDriveAPI implements FileStorage {
         }
         List<File> files = result.getFiles();
         for(File f: files){
-            if(f.getId().equalsIgnoreCase(id)) {
+            if(String.valueOf(f.getId()).equalsIgnoreCase(id)) {
                 targetFile = f;
 //                System.out.println("File/Folder " + f.getName() + " found and returned!");
             }
