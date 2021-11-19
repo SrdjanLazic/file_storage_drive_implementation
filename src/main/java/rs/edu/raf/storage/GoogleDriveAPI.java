@@ -194,7 +194,7 @@ public class GoogleDriveAPI implements FileStorage {
         // Ako postoji, proverava da li (trenutni broj fajlova u tom folderu + 1) prekoracuje maksimalan definisani iz HashMap-a
         if(currentStorageModel.getMaxNumberOfFilesInDirectory().containsKey(path)){
             int numberOfFiles = list(path, true).size();
-//            System.out.println("numberOfFiles in destination folder is " + numberOfFiles);
+            System.out.println("numberOfFiles in destination folder is " + numberOfFiles);
             if(numberOfFiles + filenames.length > currentStorageModel.getMaxNumberOfFilesInDirectory().get(path))
                 throw new FileLimitExceededException();
         }
@@ -479,7 +479,7 @@ public class GoogleDriveAPI implements FileStorage {
         if (files == null || files.isEmpty()) {
             System.out.println("No files found.");
         } else {
-            System.out.println("Files:");
+//            System.out.println("Files:");
             for (File file : files) {
                 if(!(file.getParents()==null) && file.getParents().contains(folderID)) {
                     Long size;
@@ -494,19 +494,19 @@ public class GoogleDriveAPI implements FileStorage {
                     }
                     if(file.getMimeType().equals("application/vnd.google-apps.folder") && subCheck==true){
                         type = "FOLDER";
-                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
-                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type + " with subfiles:");
+//                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type + " with subfiles:");
                         globalList.add(name);
                         listRec(name);
                     }else {
-                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
-                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type);
+//                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type);
                         globalList.add(name);
                     }
                 }
             }
         }
-        System.out.println(globalList);
+//        System.out.println(globalList);
         return globalList;
     }
 
@@ -553,38 +553,38 @@ public class GoogleDriveAPI implements FileStorage {
         }
         if (operation == Operations.FILTER_EXTENSION) {
             String extension = argument;
-            System.out.println("\nLista fajlova sa datom ekstenzijom u skladistu:");
-            System.out.println("------------------------------------------------\n");
+//            System.out.println("\nLista fajlova sa datom ekstenzijom u skladistu:");
+//            System.out.println("------------------------------------------------\n");
             for (File file : files) {
                 if (!(file.getParents()==null) && file.getParents().contains(folderID))
                     //System.out.printf("%s (%s)\n", file.getName(), file.getId());
                     if(file.getMimeType().equals("application/vnd.google-apps.folder") && subSearch==true){
                         type = "FOLDER";
                         if(file.getName().endsWith(extension)) {
-                            System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                            System.out.printf("%s (%s)\n", file.getName(), file.getId());
                             globalFilterList.add(file);
                         }
                         listFilterRec(file, argument, Operations.FILTER_EXTENSION);
                     }else {
                         if(file.getName().endsWith(extension)) {
-                            System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                            System.out.printf("%s (%s)\n", file.getName(), file.getId());
                             globalFilterList.add(file);
                         }
                     }
             }
         } else if (operation == Operations.FILTER_FILENAME) {
             String filename = argument;
-            System.out.println("\nLista fajlova ciji nazivi sadrze dati tekst:");
-            System.out.println("----------------------------------------------\n");
+//            System.out.println("\nLista fajlova ciji nazivi sadrze dati tekst:");
+//            System.out.println("----------------------------------------------\n");
             for (File file : files) {
                 if (!(file.getParents()==null) && file.getParents().contains(folderID))
                     if(file.getMimeType().equals("application/vnd.google-apps.folder") && subSearch==true){
                         type = "FOLDER";
-                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
                         listFilterRec(file, argument, Operations.FILTER_FILENAME);
                     }else {
                         if(file.getName().contains(filename)) {
-                            System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                            System.out.printf("%s (%s)\n", file.getName(), file.getId());
                             globalFilterList.add(file);
                         }
                     }
@@ -600,8 +600,8 @@ public class GoogleDriveAPI implements FileStorage {
                 order = " opadajuce ";
             }
 
-            System.out.println("\nLista fajlova i foldera sortirana" + order + "po nazivu:");
-            System.out.println("-----------------------------------------------------\n");
+//            System.out.println("\nLista fajlova i foldera sortirana" + order + "po nazivu:");
+//            System.out.println("-----------------------------------------------------\n");
             for (File file : files) {
                 String name;
                 Long size;
@@ -624,16 +624,16 @@ public class GoogleDriveAPI implements FileStorage {
                     //System.out.println( name + " --- " + size / (1024) + " kB " + " --- " + type);
                     if (file.getMimeType().equals("application/vnd.google-apps.folder") && subSearch == true) {
                         type = "FOLDER";
-                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
-                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type + " with subfiles:");
+//                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type + " with subfiles:");
                         if(order.equalsIgnoreCase(" rastuce ")) {
                             listFilterRec(file, argument, Operations.SORT_BY_NAME_ASC);
                         }else{
                             listFilterRec(file, argument, Operations.SORT_BY_NAME_DESC);
                         }
                     } else {
-                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
-                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type);
+//                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type);
                         globalFilterList.add(file);
                     }
                 }
@@ -654,8 +654,8 @@ public class GoogleDriveAPI implements FileStorage {
             }
            // SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
 
-            System.out.println("\nLista fajlova i foldera sortirana" + order + "po datumu izmene:");
-            System.out.println("-----------------------------------------------------\n");
+//            System.out.println("\nLista fajlova i foldera sortirana" + order + "po datumu izmene:");
+//            System.out.println("-----------------------------------------------------\n");
             for (File file : files) {
                 String name;
                 Long size;
@@ -685,16 +685,16 @@ public class GoogleDriveAPI implements FileStorage {
                     //System.out.println(name + " --- " + size / (1024) + " kB" + " --- " + type + " --- " + modtime.toStringRfc3339());
                     if (file.getMimeType().equals("application/vnd.google-apps.folder") && subSearch == true) {
                         type = "FOLDER";
-                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
-                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type + " with subfiles:");
+//                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type + " with subfiles:");
                         if(order.equalsIgnoreCase(" rastuce ")) {
                             listFilterRec(file, argument, Operations.SORT_BY_DATE_MODIFIED_ASC);
                         }else{
                             listFilterRec(file, argument, Operations.SORT_BY_DATE_MODIFIED_DESC);
                         }
                     } else {
-                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
-                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type);
+//                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type);
                         globalFilterList.add(file);
                     }
                 }
@@ -707,8 +707,8 @@ public class GoogleDriveAPI implements FileStorage {
         } else if (operation == Operations.SORT_BY_DATE_CREATED) {
             files.sort(new FileDateCreatedComparator());
             //SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
-            System.out.println("\nLista fajlova i foldera sortirana po datumu kreiranje:");
-            System.out.println("-----------------------------------------------------\n");
+//            System.out.println("\nLista fajlova i foldera sortirana po datumu kreiranje:");
+//            System.out.println("-----------------------------------------------------\n");
             for (File file : files) {
                 Long size;
                 if(file.getSize() == null){
@@ -721,12 +721,12 @@ public class GoogleDriveAPI implements FileStorage {
                     //System.out.println(file.getName() + " --- " + size / (1024) + " kB" + " --- " + type + " --- " + file.getCreatedTime().toStringRfc3339());
                     if (file.getMimeType().equals("application/vnd.google-apps.folder") && subSearch == true) {
                         type = "FOLDER";
-                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
-                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type + " with subfiles:");
+//                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type + " with subfiles:");
                         listFilterRec(file, argument, Operations.SORT_BY_DATE_CREATED);
                     } else {
-                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
-                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type + "---" + file.getCreatedTime().toStringRfc3339());
+//                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type + "---" + file.getCreatedTime().toStringRfc3339());
                         globalFilterList.add(file);
                     }
                 }
@@ -736,7 +736,7 @@ public class GoogleDriveAPI implements FileStorage {
         for(File f : globalFilterList){
             globalList.add(f.getName());
         }
-        System.out.println(globalList);
+//        System.out.println(globalList);
         return globalList;
     }
 
@@ -1396,13 +1396,13 @@ public class GoogleDriveAPI implements FileStorage {
                     }
                     if(file.getMimeType().equals("application/vnd.google-apps.folder")){
                         type = "FOLDER";
-                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
-                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type + " with subfiles:");
+//                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type + " with subfiles:");
                         globalList.add(name);
                         listRec(name);
                     }else {
-                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
-                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type);
+//                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type);
                         globalList.add(name);
                     }
                 }
@@ -1445,13 +1445,13 @@ public class GoogleDriveAPI implements FileStorage {
                     if (file.getMimeType().equals("application/vnd.google-apps.folder")) {
                         type = "FOLDER";
                         if (file.getName().endsWith(extension)) {
-                            System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                            System.out.printf("%s (%s)\n", file.getName(), file.getId());
                             globalFilterList.add(file);
                         }
                         listFilterRec(file, argument, Operations.FILTER_EXTENSION);
                     } else {
                         if (file.getName().endsWith(extension)) {
-                            System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                            System.out.printf("%s (%s)\n", file.getName(), file.getId());
                             globalFilterList.add(file);
                         }
                     }
@@ -1459,19 +1459,19 @@ public class GoogleDriveAPI implements FileStorage {
             }
         } else if (operation == Operations.FILTER_FILENAME) {
             String filename = argument;
-            System.out.println("\nLista fajlova ciji nazivi sadrze dati tekst:");
-            System.out.println("----------------------------------------------\n");
+//            System.out.println("\nLista fajlova ciji nazivi sadrze dati tekst:");
+//            System.out.println("----------------------------------------------\n");
             for (File file : files) {
                 if (!(file.getParents()==null) && file.getParents().contains(folderID))
                     if(file.getMimeType().equals("application/vnd.google-apps.folder")){
                         if (file.getName().contains(filename)) {
-                            System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                            System.out.printf("%s (%s)\n", file.getName(), file.getId());
                             globalFilterList.add(file);
                         }
                         listFilterRec(file, argument, Operations.FILTER_FILENAME);
                     }else {
                         if (file.getName().contains(filename)) {
-                            System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                            System.out.printf("%s (%s)\n", file.getName(), file.getId());
                             globalFilterList.add(file);
                         }
                     }
@@ -1487,8 +1487,8 @@ public class GoogleDriveAPI implements FileStorage {
                 order = " opadajuce ";
             }
 
-            System.out.println("\nLista fajlova i foldera sortirana" + order + "po nazivu:");
-            System.out.println("-----------------------------------------------------\n");
+//            System.out.println("\nLista fajlova i foldera sortirana" + order + "po nazivu:");
+//            System.out.println("-----------------------------------------------------\n");
             for (File file : files) {
                 String name;
                 Long size;
@@ -1511,8 +1511,8 @@ public class GoogleDriveAPI implements FileStorage {
                     //System.out.println( name + " --- " + size / (1024) + " kB " + " --- " + type);
                     if (file.getMimeType().equals("application/vnd.google-apps.folder")) {
                         type = "FOLDER";
-                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
-                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type);
+//                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type);
                         globalFilterList.add(file);
                         if(order.equalsIgnoreCase(" rastuce ")) {
                             listFilterRec(file, argument, Operations.SORT_BY_NAME_ASC);
@@ -1520,8 +1520,8 @@ public class GoogleDriveAPI implements FileStorage {
                             listFilterRec(file, argument, Operations.SORT_BY_NAME_DESC);
                         }
                     } else {
-                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
-                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type);
+//                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type);
                         globalFilterList.add(file);
                     }
                 }
@@ -1537,8 +1537,8 @@ public class GoogleDriveAPI implements FileStorage {
             }
             // SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
 
-            System.out.println("\nLista fajlova i foldera sortirana" + order + "po datumu izmene:");
-            System.out.println("-----------------------------------------------------\n");
+//            System.out.println("\nLista fajlova i foldera sortirana" + order + "po datumu izmene:");
+//            System.out.println("-----------------------------------------------------\n");
             for (File file : files) {
                 String name;
                 Long size;
@@ -1568,8 +1568,8 @@ public class GoogleDriveAPI implements FileStorage {
                     //System.out.println(name + " --- " + size / (1024) + " kB" + " --- " + type + " --- " + modtime.toStringRfc3339());
                     if (file.getMimeType().equals("application/vnd.google-apps.folder")) {
                         type = "FOLDER";
-                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
-                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type + " with subfiles:");
+//                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type + " with subfiles:");
                         globalFilterList.add(file);
                         if(order.equalsIgnoreCase(" rastuce ")) {
                             listFilterRec(file, argument, Operations.SORT_BY_DATE_MODIFIED_ASC);
@@ -1577,8 +1577,8 @@ public class GoogleDriveAPI implements FileStorage {
                             listFilterRec(file, argument, Operations.SORT_BY_DATE_MODIFIED_DESC);
                         }
                     } else {
-                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
-                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type);
+//                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type);
                         globalFilterList.add(file);
                     }
                 }
@@ -1586,8 +1586,8 @@ public class GoogleDriveAPI implements FileStorage {
         } else if (operation == Operations.SORT_BY_DATE_CREATED) {
             files.sort(new FileDateCreatedComparator());
             //SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
-            System.out.println("\nLista fajlova i foldera sortirana po datumu kreiranje:");
-            System.out.println("-----------------------------------------------------\n");
+//            System.out.println("\nLista fajlova i foldera sortirana po datumu kreiranje:");
+//            System.out.println("-----------------------------------------------------\n");
             for (File file : files) {
                 Long size;
                 if(file.getSize() == null){
@@ -1600,13 +1600,13 @@ public class GoogleDriveAPI implements FileStorage {
                     //System.out.println(file.getName() + " --- " + size / (1024) + " kB" + " --- " + type + " --- " + file.getCreatedTime().toStringRfc3339());
                     if (file.getMimeType().equals("application/vnd.google-apps.folder")) {
                         type = "FOLDER";
-                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
-                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type + " with subfiles:");
+//                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type + " with subfiles:");
                         globalFilterList.add(file);
                         listFilterRec(file, argument, Operations.SORT_BY_DATE_CREATED);
                     } else {
-                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
-                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type + "---" + file.getCreatedTime().toStringRfc3339());
+//                        System.out.printf("%s (%s)\n", file.getName(), file.getId());
+//                        System.out.println(" --- " + size / 1024 + " kB " + " --- " + type + "---" + file.getCreatedTime().toStringRfc3339());
                         globalFilterList.add(file);
                     }
                 }
