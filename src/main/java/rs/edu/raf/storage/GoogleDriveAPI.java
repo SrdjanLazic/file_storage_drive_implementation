@@ -1091,6 +1091,7 @@ public class GoogleDriveAPI implements FileStorage {
         }
 
         user.getFolderPrivileges().put(folderName, privilegesToAdd);
+        reuploadJSONS();
     }
 
     @Override
